@@ -1,0 +1,29 @@
+import re
+tokens = [
+    ('NUM', r'\d+'),
+    ('ID', r'[a-zA-Z_]\w*'),
+    ('OP', r'[+\-*/=]'),
+    ('EQ', r'=='),
+    ('PAREN', r'[()]'),
+    ('BRACE', r'[\{\}]'),
+    ('SEMI', r';'),
+    ('WHITESPACE', r'\s+'),
+]
+
+def analizador_lexico(codigo):
+    pos = 0
+    resultado = []
+    while pos < len(codigo):
+        match = None
+        for token_type, pattern in tokens:
+            regex = re.compile(pattern)
+            match = regex.match(codigo, pos)
+            if match:
+                text = match.group(0)
+            if token_type != 'WHITESPACE':
+                resultado.append((token_type, text))
+            pos = match.end()
+            break
+        if not match:
+            raise SyntaxError(f"Token no reconocido en posici´on {pos}")
+    return resultado
