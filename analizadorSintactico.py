@@ -17,33 +17,27 @@ tokens = [
 ]
 
 # === ANALIZADOR LÉXICO ===
+
 def analizador_lexico(codigo):
     pos = 0             # Posición actual dentro del texto fuente
     resultado = []      # Lista donde se almacenarán los tokens encontrados
-
     # Mientras no se haya recorrido todo el código fuente...
     while pos < len(codigo):
         match = None    # Se inicializa la variable de coincidencia
-
         # Iteramos sobre cada tipo de token y su expresión regular
         for token_type, pattern in tokens:
             regex = re.compile(pattern)         # Compilamos la expresión regular
-            match = regex.match(codigo, pos)    # Buscamos coincidencia desde la posición actual
-
+            match = regex.match(codigo, pos)    # Buscamos coincidencia en la posición actual
             if match:
                 text = match.group(0)           # Extraemos el texto que coincidió con el patrón
-
                 # Ignoramos los espacios en blanco y los comentarios
                 if token_type not in ('WHITESPACE', 'COMMENT'):
                     resultado.append((token_type, text))    # Agregamos el token a la lista
-
                 pos = match.end()               # Avanzamos la posición hasta el final del match
                 break                           # Ya se encontró un token, no se buscan más en este punto
-
         if not match:
             # Si no se reconoció ningún patrón, se lanza un error de sintaxis
             raise SyntaxError(f"Token no reconocido en posición {pos}")
-
     return resultado    # Devolvemos la lista completa de tokens encontrados
 
 # === ANALIZADOR SINTÁCTICO  ===
@@ -67,15 +61,14 @@ def parse_sentencia(tokens):    # Decide si es declaración o asignación según
 def parse_declaracion(tokens):  # Declaracion ::= tipo ID '=' expresion ';'
     tipo = parse_tipo(tokens)
     identificador = parse_id(tokens)
-    parse_equals(tokens)
-    expr = parse_expresion(tokens)
+    expr = None # Inicializamos expr como None para evitar errores si no hay expresión
+    if tokens and tokens[0][0] == 'OP' and tokens[0][1] == '=':
+        parse_equals(tokens)                # Verificamos que haya un '='
+        expr = parse_expresion(tokens)      # Parseamos la expresión
     parse_semi(tokens)
     return ('DECLARACION', tipo, identificador, expr)
 
-def parse_asignacion(tokens):
-    """
-    asignacion ::= ID '=' expresion ';'
-    """
+def parse_asignacion(tokens):   # Asignacion ::= ID '=' expresion ';'
     identificador = parse_id(tokens)
     parse_equals(tokens)
     expr = parse_expresion(tokens)
@@ -97,28 +90,6 @@ def parse_id(tokens):   # Reconoce ('ID', nombre) como identificador.
     if tk_type == 'ID':
         return tk_val
     raise SyntaxError(f"Identificador no válido: {tk_val}")
-
-def parse_num(tokens):  # Reconoce ('NUM', valor) como número.
-    if not tokens:
-        raise SyntaxError("Se esperaba un número pero no quedan tokens")
-    tk_type, tk_val = tokens.pop(0) # Extrae el primer token
-    if tk_type == 'NUM':
-        return float(tk_val) if '.' in tk_val else int(tk_val)
-    raise SyntaxError(f"Número no válido: {tk_val}")
-
-def parse_equals(tokens):   # Verifica que haya un ('OP','=')
-    if not tokens:
-        raise SyntaxError("Se esperaba '=' pero no quedan tokens")
-    tk_type, tk_val = tokens.pop(0) # Extrae el primer token
-    if not (tk_type == 'OP' and tk_val == '='):
-        raise SyntaxError(f"Se esperaba '=' pero se encontró {tk_val}")
-
-def parse_semi(tokens): # Verifica que haya un ('SEMI',';')
-    if not tokens:
-        raise SyntaxError("Se esperaba ';' pero no quedan tokens")
-    tk_type, tk_val = tokens.pop(0) # Extrae el primer token
-    if tk_type != 'SEMI':
-        raise SyntaxError(f"Se esperaba ';' pero se encontró {tk_val}")
 
 def parse_expresion(tokens):    # Expresión simple: elemento seguido de cero o más operaciones binarias.
     """
@@ -152,6 +123,27 @@ def parse_expresion(tokens):    # Expresión simple: elemento seguido de cero o 
 
     return nodo
 
+def parse_num(tokens):  # Reconoce ('NUM', valor) como número.
+    if not tokens:
+        raise SyntaxError("Se esperaba un número pero no quedan tokens")
+    tk_type, tk_val = tokens.pop(0) # Extrae el primer token
+    if tk_type == 'NUM':
+        return float(tk_val) if '.' in tk_val else int(tk_val)
+    raise SyntaxError(f"Número no válido: {tk_val}")
+
+def parse_equals(tokens):   # Verifica que haya un ('OP','=')
+    if not tokens:
+        raise SyntaxError("Se esperaba '=' pero no quedan tokens")
+    tk_type, tk_val = tokens.pop(0) # Extrae el primer token
+    if not (tk_type == 'OP' and tk_val == '='):
+        raise SyntaxError(f"Se esperaba '=' pero se encontró {tk_val}")
+
+def parse_semi(tokens): # Verifica que haya un ('SEMI',';')
+    if not tokens:
+        raise SyntaxError("Se esperaba ';' pero no quedan tokens")
+    tk_type, tk_val = tokens.pop(0) # Extrae el primer token
+    if tk_type != 'SEMI':
+        raise SyntaxError(f"Se esperaba ';' pero se encontró {tk_val}")
 
 # === BLOQUE DE PRUEBA ===
 
@@ -161,15 +153,13 @@ if __name__ == "__main__":
     int a = 10;
     int b = a + 5;
     c = a + 1;
-    int f = 2;
+    int f;
     
     """
-
     print("=== ANÁLISIS LÉXICO ===")
     tokens = analizador_lexico(codigo)
     for t in tokens:
         print(t)
-
     print("\n=== ANÁLISIS SINTÁCTICO ===")
     try:
         ast = analizador_sintactico(tokens)
