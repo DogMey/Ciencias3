@@ -87,7 +87,7 @@ def parse_id(tokens):   # Reconoce ('ID', nombre) como identificador.
     if not tokens:
         raise SyntaxError("Se esperaba un identificador pero no quedan tokens")
     tk_type, tk_val = tokens.pop(0)
-    if tk_type == 'ID':
+    if tk_type == 'ID': # Extrae el primer token
         return tk_val
     raise SyntaxError(f"Identificador no válido: {tk_val}")
 
@@ -99,14 +99,13 @@ def parse_expresion(tokens):    # Expresión simple: elemento seguido de cero o 
     # Se va a construir un árbol de sintaxis abstracta (AST) para la expresión
     if not tokens:
         raise SyntaxError("Expresión vacía")
-    # Primer elemento
     if tokens[0][0] == 'NUM':
         nodo = parse_num(tokens)
     elif tokens[0][0] == 'ID':
         nodo = parse_id(tokens)
     else:
         raise SyntaxError(f"Expresión no válida, se encontró {tokens[0][1]}")
-
+    
     # Operadores binarios
     while tokens and tokens[0][0] == 'OP' and tokens[0][1] in ('+', '-', '*', '/'):
         op = tokens.pop(0)[1]
@@ -161,6 +160,7 @@ if __name__ == "__main__":
     for t in tokens:
         print(t)
     print("\n=== ANÁLISIS SINTÁCTICO ===")
+    # Se espera que el analizador sintáctico devuelva una lista de sentencias
     try:
         ast = analizador_sintactico(tokens)
         for sentencia in ast:
