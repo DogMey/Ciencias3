@@ -165,33 +165,38 @@ def parse_factor(tokens):
     else:
         raise SyntaxError(f"Elemento inesperado en la expresión: {tk_val}")
 
+# Función para parsear una estructura if
+# (condición) { bloque } [else { bloque }]
 def parse_if(tokens):
     """
     Parsea una estructura if (condición) { bloque } [else { bloque }]
     """
-    tk_type, tk_val = tokens.pop(0)
+    tk_type, tk_val = tokens.pop(0) # Consume el token 'if'
     if tk_type != 'IDENTIFIER' or tk_val != 'if':
         raise SyntaxError("Se esperaba 'if'.")
 
+    # Verifica que siga un '(' y que contenga una expresión lógica
     if not tokens or tokens[0][0] != 'LPAREN':
         raise SyntaxError("Se esperaba '(' después de 'if'.")
     tokens.pop(0)  # Consume '('
 
     condition = parse_expression(tokens)  # Parsea condición lógica
 
+    # Verifica que cierre con ')'
     if not tokens or tokens[0][0] != 'RPAREN':
         raise SyntaxError("Se esperaba ')' después de la condición.")
     tokens.pop(0)  # Consume ')'
 
+    # Verifica que siga un '{' para abrir el bloque y que contenga una expresión lógica
     if not tokens or tokens[0][0] != 'LBRACE':
         raise SyntaxError("Se esperaba '{' para abrir el bloque.")
     tokens.pop(0)  # Consume '{'
 
-    if_body = []
+    if_body = [] # Bloque de instrucciones dentro del 'if', mientras haya tokens y no se cierre el bloque con '}', se parsean las instrucciones dentro del bloque
     while tokens and tokens[0][0] != 'RBRACE':
-        if_body.append(parse_statement(tokens))
+        if_body.append(parse_statement(tokens)) # Se parsea cada instrucción dentro del bloque
 
-    if not tokens or tokens[0][0] != 'RBRACE':
+    if not tokens or tokens[0][0] != 'RBRACE': # Se espera un '}' para cerrar el bloque
         raise SyntaxError("Se esperaba '}' al final del bloque 'if'.")
     tokens.pop(0)  # Consume '}'
 
@@ -214,10 +219,11 @@ def parse_if(tokens):
 
     return ('IF', condition, if_body, else_body)
 
+# Función auxiliar para consumir un token y verificar su tipo y valor
 def consume(tokens, expected_type, expected_value=None):
-    if not tokens:
+    if not tokens:  # Si no hay más tokens
         raise SyntaxError(f"Se esperaba {expected_type} pero no hay más tokens.")
-    tk_type, tk_val = tokens.pop(0)
-    if tk_type != expected_type or (expected_value is not None and tk_val != expected_value):
+    tk_type, tk_val = tokens.pop(0) # Consume el token
+    if tk_type != expected_type or (expected_value is not None and tk_val != expected_value): # Verifica tipo y valor
         raise SyntaxError(f"Se esperaba {expected_type} '{expected_value}' pero se encontró {tk_type} '{tk_val}'")
     return tk_val

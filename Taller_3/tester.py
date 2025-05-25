@@ -187,6 +187,7 @@ def run_tests(lexer_func, parser_func):
         }
     ]
 
+    # Ejecutar cada test
     for i, ejemplo in enumerate(ejemplos, 1):
         print(f"\n=== Test {i}: {ejemplo['descripcion']} ===")
         print("Código fuente:")
@@ -194,8 +195,8 @@ def run_tests(lexer_func, parser_func):
 
         # Análisis Léxico
         try:
-            tokens_crudos = lexer_func(ejemplo['codigo'])
-            tokens = normalizar_tokens(tokens_crudos)
+            tokens_crudos = lexer_func(ejemplo['codigo'])   # Llamar al lexer
+            tokens = normalizar_tokens(tokens_crudos)       # Normalizar tokens
             print("Tokens obtenidos:")
             print(tokens)
             print("Tokens esperados:")
@@ -211,7 +212,7 @@ def run_tests(lexer_func, parser_func):
 
         # Análisis Sintáctico
         try:
-            ast = parser_func(tokens)
+            ast = parser_func(tokens) # Llamar al parser
             print("AST obtenido:")
             print(ast)
             print("AST esperado:")
@@ -229,21 +230,22 @@ def run_tests(lexer_func, parser_func):
         else:
             print("AST incorrecto ❌")
 
+# Normalizar tokens para comparación
 def normalizar_tokens(tokens):
         """
         Convierte los tokens del nuevo lexer al formato ('TYPE', 'VALUE') para comparación.
         """
-        tokens_filtrados = []
+        tokens_filtrados = []   # Lista para almacenar los tokens filtrados
         for tok in tokens:
             # Si el token es una tupla antigua, no hacer nada
             if isinstance(tok, tuple):
-                tokens_filtrados.append(tok)
+                tokens_filtrados.append(tok)    # Añadir el token tal cual
             else:
-                # Si el token tiene .type y .value (objeto tipo Token)
+                # Si el token es un diccionario, extraer tipo y valor
                 if tok["type"] and tok["value"]:
-                    if tok["type"] not in {"COMMENT", "WHITESPACE"}:
-                        tokens_filtrados.append((tok["type"], tok["value"]))
-        return tokens_filtrados
+                    if tok["type"] not in {"COMMENT", "WHITESPACE"}: # Ignorar comentarios y espacios
+                        tokens_filtrados.append((tok["type"], tok["value"])) # Añadir el token normalizado
+        return tokens_filtrados # Retornar la lista de tokens filtrados
 
 if __name__ == "__main__":
     run_tests(lexer, parser)
