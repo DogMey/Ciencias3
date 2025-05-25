@@ -4,7 +4,7 @@ import re
 # Cada tupla contiene un nombre de token y su patrón de expresión regular.
 # El orden es importante: los patrones más específicos deben ir primero.
 token_definitions = [
-    ('EQUALS', r'=='),                   # Token para el operador de igualdad '=='
+    ('EQUALS', r'=='),                  # Token para el operador de igualdad '=='
     ('COMMENT', r'//.*'),               # Token para comentarios de una línea que comienzan con //
     ('NUMBER', r'\d+\.\d+|\d+'),        # Token para números: decimales o enteros
     ('IDENTIFIER', r'[a-zA-Z_]\w*'),    # Token para identificadores: letra o guion bajo seguido de letras, dígitos o guion bajo
@@ -20,20 +20,20 @@ def lexer(source_code):
     Analizador léxico que recibe el código fuente como texto y devuelve
     una lista de tokens reconocidos en el código.
     """
-    position = 0              # Posición actual dentro del texto fuente
-    found_tokens = []        # Lista donde se almacenarán los tokens válidos
+    position = 0                # Posición actual dentro del texto fuente
+    found_tokens = []           # Lista donde se almacenarán los tokens válidos
 
     # Mientras no se haya llegado al final del texto fuente
     while position < len(source_code):
-        match = None         # Variable para almacenar la coincidencia actual
+        match = None            # Variable para almacenar la coincidencia actual
 
         # Iterar sobre cada tipo de token y su expresión regular
         for token_type, pattern in token_definitions:
-            regex = re.compile(pattern)          # Compila el patrón regex
+            regex = re.compile(pattern)                 # Compila el patrón regex
             match = regex.match(source_code, position)  # Busca coincidencia desde la posición actual
 
             if match:                           # Si encontró una coincidencia
-                token_value = match.group(0)   # Extrae el texto coincidente
+                token_value = match.group(0)    # Extrae el texto coincidente
 
                 # Ignorar los tokens de espacio en blanco y comentarios
                 if token_type not in ('WHITESPACE', 'COMMENT'):
