@@ -211,7 +211,8 @@ def run_tests(lexer_func, parser_func):
 
         # Análisis Sintáctico
         try:
-            ast = parser_func(tokens)
+            # Pasar los tokens originales (con información de línea) en lugar de los normalizados
+            ast = parser_func(tokens_crudos)  # Cambiar de 'tokens' a 'tokens_crudos'
             print("AST obtenido:")
             print(ast)
             print("AST esperado:")
