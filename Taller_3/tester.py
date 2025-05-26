@@ -144,11 +144,7 @@ def run_tests(lexer_func, parser_func):
         },
         # Test 6: Expresión compleja con múltiples operaciones y paréntesis
         {
-            "codigo": """
-            a = 5;
-            b = a - 3;
-            c = b * (a + 2;
-            """,
+            "codigo": "result = a + b * c - 2 / 4;",
             "descripcion": "Expresión compleja con múltiples operaciones y paréntesis",
             "salida_esperada_tokens": [
                 ("IDENTIFIER", 'result'),
@@ -178,7 +174,7 @@ def run_tests(lexer_func, parser_func):
         },
         # Test 7: Declaración de variable sin asignación
         {
-            "codigo": "int x = 1 + 2;",
+            "codigo": "int x;",
             "descripcion": "Inicialización de una variable sin asignación de valor",
             "salida_esperada_tokens": [
                 ('IDENTIFIER', 'int'),
@@ -187,6 +183,44 @@ def run_tests(lexer_func, parser_func):
             ],
             "salida_esperada_ast": [
                 ('DECLARATION', 'int', 'x')
+            ]
+        },
+        #test 8: Error de sintaxis
+        {
+            "codigo": """
+            a = 5;
+            b = a - 3;
+            c = b * (a + 2;
+            """,
+            "descripcion": "Error de sintaxis por paréntesis no cerrado",
+            "salida_esperada_tokens": [
+                ('IDENTIFIER', 'a'),
+                ('OPERATOR', '='),
+                ('NUMBER', '5'),
+                ('SEMICOLON', ';'),
+
+                ('IDENTIFIER', 'b'),
+                ('OPERATOR', '='),
+                ('IDENTIFIER', 'a'),
+                ('OPERATOR', '-'),
+                ('NUMBER', '3'),
+                ('SEMICOLON', ';'),
+
+                ('IDENTIFIER', 'c'),
+                ('OPERATOR', '='),
+                ('IDENTIFIER', 'b'),
+                ('OPERATOR', '*'),
+                ('LPAREN', '('),
+                ('IDENTIFIER', 'a'),
+                ('OPERATOR', '+'),
+                ('NUMBER', '2'),
+                ('RPAREN', ')'),  # Aquí falta el paréntesis de cierre
+                ('SEMICOLON', ';')
+            ],
+            "salida_esperada_ast": [
+                ('ASSIGNMENT', 'a', 5),
+                ('ASSIGNMENT', 'b', ('-', 'a', 3)),
+                ('ASSIGNMENT', 'c', ('*', 'b', ('+', 'a', 2)))
             ]
         }
     ]
@@ -216,9 +250,6 @@ def run_tests(lexer_func, parser_func):
 
         # Análisis Sintáctico
         try:
-            # Debug: mostrar formato de tokens antes de parsear
-            print("Formato de tokens_crudos:", tokens_crudos[:3] if tokens_crudos else "Lista vacía")
-            
             ast = parser_func(tokens_crudos)
             print("AST obtenido:")
             print(ast)
