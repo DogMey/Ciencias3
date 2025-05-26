@@ -5,6 +5,18 @@ def parser(tokens):
     Función principal del parser.
     Recibe una lista de tokens (tuplas de tipo y valor) y devuelve el árbol de sintaxis abstracta (AST).
     """
+
+    # Convertir tokens del formato del lexer a formato interno manteniendo info de línea
+    if tokens and isinstance(tokens[0], dict):
+        # Si vienen como diccionarios del nuevo lexer, convertir manteniendo línea
+        formatted_tokens = []
+        for token in tokens:
+            formatted_tokens.append((token['type'], token['value'], token['line']))
+        tokens = formatted_tokens
+    else:
+        # Si vienen como tuplas simples, agregar línea por defecto
+        tokens = [(t[0], t[1], 1) for t in tokens]
+
     tokens = tokens.copy()  # Copia para no modificar la lista original
     ast = []  # AST: lista de sentencias analizadas
 
@@ -13,11 +25,25 @@ def parser(tokens):
         ast.append(parse_statement(tokens))  # Agrega el resultado del análisis al AST
     return ast
 
+def get_token_info(token):
+    """
+    Función auxiliar para extraer información del token de manera segura.
+    Retorna (tipo, valor, línea)
+    """
+    if len(token) >= 3:
+        return token[0], token[1], token[2]
+    elif len(token) == 2:
+        return token[0], token[1], 1
+    else:
+        raise SyntaxError("Formato de token inválido")
 
 def parse_statement(tokens):
     """
     Determina si una sentencia es una declaración o una asignación.
     """
+    if not tokens:
+        raise SyntaxError("Se esperaba una sentencia pero no hay más tokens.")
+    
     # Declaración si el primer token es un tipo válido (int o float)
     if tokens[0][0] == 'IDENTIFIER' and tokens[0][1] in ('int', 'float'):
         return parse_declaration(tokens)
@@ -27,8 +53,9 @@ def parse_statement(tokens):
     if tokens[0][0] == 'IDENTIFIER':
         return parse_assignment(tokens)
     
-    # Si no es ninguna de las anteriores, lanza error de sintaxis
-    raise SyntaxError(f"Sentencia inválida. Token inesperado: {tokens[0]}")
+    # Si no es ninguna de las anteriores, lanza error de sintaxis con línea
+    line = tokens[0][2] if len(tokens[0]) > 2 else 1
+    raise SyntaxError(f"Sentencia inválida en la línea {line}. Token inesperado: {tokens[0][1]}")
 
 
 def parse_declaration(tokens):
@@ -71,10 +98,16 @@ def parse_type(tokens):
     """
     if not tokens:
         raise SyntaxError("Se esperaba un tipo, pero no hay más tokens.")
-    tk_type, tk_val = tokens.pop(0)
+    
+    # Manejar tokens con o sin información de línea
+    token = tokens.pop(0)
+    tk_type = token[0]
+    tk_val = token[1]
+    tk_line = token[2] if len(token) > 2 else 1
+    
     if tk_type == 'IDENTIFIER' and tk_val in ('int', 'float'):
         return tk_val
-    raise SyntaxError(f"Tipo inválido: {tk_val}")
+    raise SyntaxError(f"Error de sintaxis en la línea {tk_line}: Tipo inválido: {tk_val}")
 
 
 def parse_id(tokens):
@@ -112,9 +145,10 @@ def parse_expression(tokens):
     """
     node = parse_arith_expr(tokens)
 
-    # Comparadores lógicos
+    # Comparadores lógicos - manejar tokens con línea
     if tokens and tokens[0][0] == 'LOGICOPERATOR' and tokens[0][1] in ('==', '!=', '<', '>', '<=', '>='):
-        op = tokens.pop(0)[1]
+        token = tokens.pop(0)
+        op = token[1]
         right = parse_arith_expr(tokens)
         node = (op, node, right)
     
@@ -124,7 +158,8 @@ def parse_arith_expr(tokens):
     """Suma y resta: expr → term ((+|-) term)*"""
     node = parse_term(tokens)
     while tokens and tokens[0][0] == 'OPERATOR' and tokens[0][1] in ('+', '-'):
-        op = tokens.pop(0)[1]
+        token = tokens.pop(0)
+        op = token[1]
         right = parse_term(tokens)
         node = (op, node, right)
     return node
@@ -136,7 +171,8 @@ def parse_term(tokens):
     """
     node = parse_factor(tokens)
     while tokens and tokens[0][0] == 'OPERATOR' and tokens[0][1] in ('*', '/'):
-        op = tokens.pop(0)[1]
+        token = tokens.pop(0)
+        op = token[1]
         right = parse_factor(tokens)
         node = (op, node, right)
     return node
@@ -149,7 +185,11 @@ def parse_factor(tokens):
     if not tokens:
         raise SyntaxError("Expresión incompleta.")
     
-    tk_type, tk_val = tokens[0]
+    # Manejar tokens con o sin información de línea
+    token = tokens[0]
+    tk_type = token[0]
+    tk_val = token[1]
+    tk_line = token[2] if len(token) > 2 else 1
 
     if tk_type == 'NUMBER':
         return parse_num(tokens)
@@ -159,11 +199,12 @@ def parse_factor(tokens):
         tokens.pop(0)  # Consume '('
         expr = parse_expression(tokens)
         if not tokens or tokens[0][0] != 'RPAREN':
-            raise SyntaxError("Se esperaba ')' al cerrar la expresión.")
+            current_line = tokens[0][2] if tokens and len(tokens[0]) > 2 else tk_line
+            raise SyntaxError(f"Error de sintaxis en la línea {current_line}: Se esperaba ')' al cerrar la expresión.")
         tokens.pop(0)  # Consume ')'
         return expr
     else:
-        raise SyntaxError(f"Elemento inesperado en la expresión: {tk_val}")
+        raise SyntaxError(f"Error de sintaxis en la línea {tk_line}: Elemento inesperado en la expresión: '{tk_val}'")
 
 # Función para parsear una estructura if
 # (condición) { bloque } [else { bloque }]
@@ -171,33 +212,38 @@ def parse_if(tokens):
     """
     Parsea una estructura if (condición) { bloque } [else { bloque }]
     """
-    tk_type, tk_val = tokens.pop(0) # Consume el token 'if'
+    # Manejar tokens con o sin información de línea
+    token = tokens.pop(0)
+    tk_type = token[0]
+    tk_val = token[1]
+    tk_line = token[2] if len(token) > 2 else 1
+    
     if tk_type != 'IDENTIFIER' or tk_val != 'if':
-        raise SyntaxError("Se esperaba 'if'.")
+        raise SyntaxError(f"Error de sintaxis en la línea {tk_line}: Se esperaba 'if'.")
 
-    # Verifica que siga un '(' y que contenga una expresión lógica
     if not tokens or tokens[0][0] != 'LPAREN':
-        raise SyntaxError("Se esperaba '(' después de 'if'.")
+        current_line = tokens[0][2] if tokens and len(tokens[0]) > 2 else tk_line
+        raise SyntaxError(f"Error de sintaxis en la línea {current_line}: Se esperaba '(' después de 'if'.")
     tokens.pop(0)  # Consume '('
 
     condition = parse_expression(tokens)  # Parsea condición lógica
 
-    # Verifica que cierre con ')'
     if not tokens or tokens[0][0] != 'RPAREN':
-        raise SyntaxError("Se esperaba ')' después de la condición.")
+        current_line = tokens[0][2] if tokens and len(tokens[0]) > 2 else tk_line
+        raise SyntaxError(f"Error de sintaxis en la línea {current_line}: Se esperaba ')' después de la condición.")
     tokens.pop(0)  # Consume ')'
 
-    # Verifica que siga un '{' para abrir el bloque y que contenga una expresión lógica
     if not tokens or tokens[0][0] != 'LBRACE':
-        raise SyntaxError("Se esperaba '{' para abrir el bloque.")
+        current_line = tokens[0][2] if tokens and len(tokens[0]) > 2 else tk_line
+        raise SyntaxError(f"Error de sintaxis en la línea {current_line}: Se esperaba '{{' para abrir el bloque.")
     tokens.pop(0)  # Consume '{'
 
-    if_body = [] # Bloque de instrucciones dentro del 'if', mientras haya tokens y no se cierre el bloque con '}', se parsean las instrucciones dentro del bloque
+    if_body = []
     while tokens and tokens[0][0] != 'RBRACE':
-        if_body.append(parse_statement(tokens)) # Se parsea cada instrucción dentro del bloque
+        if_body.append(parse_statement(tokens))
 
-    if not tokens or tokens[0][0] != 'RBRACE': # Se espera un '}' para cerrar el bloque
-        raise SyntaxError("Se esperaba '}' al final del bloque 'if'.")
+    if not tokens or tokens[0][0] != 'RBRACE':
+        raise SyntaxError(f"Error de sintaxis: Se esperaba '}}' al final del bloque 'if'.")
     tokens.pop(0)  # Consume '}'
 
     # Bloque opcional 'else'
@@ -206,7 +252,8 @@ def parse_if(tokens):
         tokens.pop(0)  # Consume 'else'
 
         if not tokens or tokens[0][0] != 'LBRACE':
-            raise SyntaxError("Se esperaba '{' para abrir el bloque 'else'.")
+            current_line = tokens[0][2] if tokens and len(tokens[0]) > 2 else 1
+            raise SyntaxError(f"Error de sintaxis en la línea {current_line}: Se esperaba '{{' para abrir el bloque 'else'.")
         tokens.pop(0)  # Consume '{'
 
         else_body = []
@@ -214,16 +261,26 @@ def parse_if(tokens):
             else_body.append(parse_statement(tokens))
 
         if not tokens or tokens[0][0] != 'RBRACE':
-            raise SyntaxError("Se esperaba '}' al final del bloque 'else'.")
+            raise SyntaxError("Error de sintaxis: Se esperaba '}' al final del bloque 'else'.")
         tokens.pop(0)  # Consume '}'
 
     return ('IF', condition, if_body, else_body)
 
 # Función auxiliar para consumir un token y verificar su tipo y valor
 def consume(tokens, expected_type, expected_value=None):
-    if not tokens:  # Si no hay más tokens
+    if not tokens:
         raise SyntaxError(f"Se esperaba {expected_type} pero no hay más tokens.")
-    tk_type, tk_val = tokens.pop(0) # Consume el token
-    if tk_type != expected_type or (expected_value is not None and tk_val != expected_value): # Verifica tipo y valor
-        raise SyntaxError(f"Se esperaba {expected_type} '{expected_value}' pero se encontró {tk_type} '{tk_val}'")
+    
+    # Extraer información del token incluyendo línea si está disponible
+    tk_type = tokens[0][0]
+    tk_val = tokens[0][1]
+    tk_line = tokens[0][2] if len(tokens[0]) > 2 else 1
+    
+    token = tokens.pop(0)
+    
+    if tk_type != expected_type or (expected_value is not None and tk_val != expected_value):
+        expected_str = f"{expected_type}"
+        if expected_value:
+            expected_str += f" '{expected_value}'"
+        raise SyntaxError(f"Error de sintaxis en la línea {tk_line}: Se esperaba {expected_str} pero se encontró {tk_type} '{tk_val}'")
     return tk_val

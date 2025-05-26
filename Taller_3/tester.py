@@ -144,7 +144,11 @@ def run_tests(lexer_func, parser_func):
         },
         # Test 6: Expresión compleja con múltiples operaciones y paréntesis
         {
-            "codigo": "result = a + b * c - 2 / 4;",
+            "codigo": """
+            a = 5;
+            b = a - 3;
+            c = b * (a + 2;
+            """,
             "descripcion": "Expresión compleja con múltiples operaciones y paréntesis",
             "salida_esperada_tokens": [
                 ("IDENTIFIER", 'result'),
@@ -174,7 +178,7 @@ def run_tests(lexer_func, parser_func):
         },
         # Test 7: Declaración de variable sin asignación
         {
-            "codigo": "int x;",
+            "codigo": "int x = 1 + 2;",
             "descripcion": "Inicialización de una variable sin asignación de valor",
             "salida_esperada_tokens": [
                 ('IDENTIFIER', 'int'),
@@ -212,7 +216,10 @@ def run_tests(lexer_func, parser_func):
 
         # Análisis Sintáctico
         try:
-            ast = parser_func(tokens) # Llamar al parser
+            # Debug: mostrar formato de tokens antes de parsear
+            print("Formato de tokens_crudos:", tokens_crudos[:3] if tokens_crudos else "Lista vacía")
+            
+            ast = parser_func(tokens_crudos)
             print("AST obtenido:")
             print(ast)
             print("AST esperado:")
