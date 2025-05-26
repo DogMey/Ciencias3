@@ -241,6 +241,7 @@ def run_tests(lexer_func, parser_func):
 def normalizar_tokens(tokens):
         """
         Convierte los tokens del nuevo lexer al formato ('TYPE', 'VALUE') para comparación.
+        Ajusta aquí si los tokens vienen como objetos.
         """
         tokens_filtrados = []   # Lista para almacenar los tokens filtrados
         for tok in tokens:

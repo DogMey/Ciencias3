@@ -17,6 +17,18 @@ def parser(tokens):
         # Si vienen como tuplas simples, agregar línea por defecto
         tokens = [(t[0], t[1], 1) for t in tokens]
 
+
+    # Convertir tokens del formato del lexer a formato interno manteniendo info de línea
+    if tokens and isinstance(tokens[0], dict):
+        # Si vienen como diccionarios del nuevo lexer, convertir manteniendo línea
+        formatted_tokens = []
+        for token in tokens:
+            formatted_tokens.append((token['type'], token['value'], token['line']))
+        tokens = formatted_tokens
+    else:
+        # Si vienen como tuplas simples, agregar línea por defecto
+        tokens = [(t[0], t[1], 1) for t in tokens]
+
     tokens = tokens.copy()  # Copia para no modificar la lista original
     ast = []  # AST: lista de sentencias analizadas
 
