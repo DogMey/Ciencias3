@@ -190,7 +190,7 @@ def run_tests(lexer_func, parser_func):
             "codigo": """
             a = 5;
             b = a - 3;
-            c = b * (a + 2;
+            c = b * (a + 2);
             """,
             "descripcion": "Error de sintaxis por paréntesis no cerrado",
             "salida_esperada_tokens": [
