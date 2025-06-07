@@ -31,7 +31,7 @@ def parser(tokens):
 # Función para procesar una sentencia del código
 def parse_statement(tokens):
     # Si el primer token es 'int' o 'float', procesamos como declaración
-    if match_keyword(tokens, 'int') or match_keyword(tokens, 'float') or match_keyword(tokens, 'string') or match_keyword(tokens, 'char') or match_keyword(tokens, 'bool'):
+    if match_keyword(tokens, 'int') or match_keyword(tokens, 'float'):
         return parse_declaration(tokens)
 
     # Si el primer token es 'if', procesamos una estructura condicional
@@ -62,7 +62,6 @@ def parse_declaration(tokens):
     expr = parse_expression(tokens)  # Procesa la expresión a la derecha del '='
     parse_semi(tokens)  # Procesa el punto y coma al final
     return ('DECLARATION', tipo, ident, expr)  # Retorna la declaración con la expresión
-
 # Función para procesar una asignación, por ejemplo: 'a = 5'
 def parse_assignment(tokens):
     # Procesar el identificador (ej. 'a')
@@ -186,10 +185,6 @@ def parse_primary(tokens):
     elif match(tokens, 'CHAR'):
         return parse_char(tokens)
 
-    # Soporte para valores booleanos
-    elif match(tokens, 'KEYWORD', 'true') or match(tokens, 'KEYWORD', 'false'):
-        _, val, _, _ = tokens.pop(0)
-        return True if val == 'true' else False
 
     # Si encontramos un identificador, lo procesamos
     elif match(tokens, 'IDENTIFIER'):
@@ -223,7 +218,7 @@ def parse_type(tokens):
     last_token_line = line  # Actualiza la última línea procesada con la línea actual.
 
     # Verifica si el tipo de token es 'int' o 'float', que son tipos válidos en este contexto.
-    if tipo == 'KEYWORD' and val in ('int', 'float', 'string', 'char', 'bool'):
+    if tipo == 'KEYWORD' and val in ('int', 'float'):
         return val
     
     # Si no es un tipo válido, lanza un error especificando la línea y columna.
