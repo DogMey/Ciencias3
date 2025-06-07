@@ -10,7 +10,6 @@ def semantic_analyze(ast):
             handle_assignment(node, symbol_table)
         elif node_type == "CALL":
             handle_call(node, symbol_table)
-        # Puedes agregar más casos aquí
 
     return True  # Si no hay errores
 
@@ -45,7 +44,6 @@ def handle_call(node, symbol_table):
             continue
         elif isinstance(arg, str) and arg not in symbol_table:
             raise Exception(f"Error semántico: la variable '{arg}' no ha sido declarada.")
-        # Si el argumento es una expresión, podrías evaluarla aquí
 
 def eval_expression_type(expr, symbol_table):
     # Si es un número entero
@@ -94,7 +92,6 @@ def eval_expression_type(expr, symbol_table):
     return 'unknown'
 
 def types_compatible(var_type, expr_type):
-    # Puedes ajustar las reglas según tu lenguaje
     if var_type == expr_type:
         return True
     if var_type == 'float' and expr_type == 'int':
