@@ -3,7 +3,6 @@ from parser import parser
 
 def run_tests(lexer_func, parser_func):
     ejemplos = [
-        # Test 1: Declaración con comentario al inicio
         {
             "codigo": """
             // Declaración con comentario
@@ -11,7 +10,7 @@ def run_tests(lexer_func, parser_func):
             """,
             "descripcion": "Declaración con comentario al inicio",
             "salida_esperada_tokens": [
-                ('IDENTIFIER', 'int'),
+                ('KEYWORD', 'int'),
                 ('IDENTIFIER', 'count'),
                 ('OPERATOR', '='),
                 ('NUMBER', '0'),
@@ -21,18 +20,17 @@ def run_tests(lexer_func, parser_func):
                 ('DECLARATION', 'int', 'count', 0)
             ]
         },
-        # Test 2: Expresión con paréntesis y multiplicación
         {
             "codigo": "result = (a + b) * 2;",
             "descripcion": "Expresión con paréntesis y multiplicación",
             "salida_esperada_tokens": [
                 ('IDENTIFIER', 'result'),
                 ('OPERATOR', '='),
-                ('LPAREN', '('),
+                ('LPAREN', '('),         
                 ('IDENTIFIER', 'a'),
                 ('OPERATOR', '+'),
                 ('IDENTIFIER', 'b'),
-                ('RPAREN', ')'),
+                ('RPAREN', ')'),         
                 ('OPERATOR', '*'),
                 ('NUMBER', '2'),
                 ('SEMICOLON', ';')
@@ -41,7 +39,6 @@ def run_tests(lexer_func, parser_func):
                 ('ASSIGNMENT', 'result', ('*', ('+', 'a', 'b'), 2))
             ]
         },
-        # Test 3: Condicional simple con igualdad y bloque
         {
             "codigo": """
             if (a == b) {
@@ -50,10 +47,10 @@ def run_tests(lexer_func, parser_func):
             """,
             "descripcion": "Condicional simple con igualdad y bloque",
             "salida_esperada_tokens": [
-                ('IDENTIFIER', 'if'),
+                ('KEYWORD', 'if'),
                 ('LPAREN', '('),
                 ('IDENTIFIER', 'a'),
-                ('LOGICOPERATOR', '=='),
+                ('EQUALS', '=='),
                 ('IDENTIFIER', 'b'),
                 ('RPAREN', ')'),
                 ('LBRACE', '{'),
@@ -66,10 +63,9 @@ def run_tests(lexer_func, parser_func):
             "salida_esperada_ast": [
                 ('IF', ('==', 'a', 'b'), [
                     ('ASSIGNMENT', 'c', 10)
-                ], None)
+                ])
             ]
         },
-        # Test 4: Declaración de variable y asignación
         {
             "codigo": """
             float x = 1.5;
@@ -78,19 +74,19 @@ def run_tests(lexer_func, parser_func):
             """,
             "descripcion": "Declaraciones y expresión con división",
             "salida_esperada_tokens": [
-                ('IDENTIFIER', 'float'),
+                ('KEYWORD', 'float'),
                 ('IDENTIFIER', 'x'),
                 ('OPERATOR', '='),
                 ('NUMBER', '1.5'),
                 ('SEMICOLON', ';'),
 
-                ('IDENTIFIER', 'float'),
+                ('KEYWORD', 'float'),
                 ('IDENTIFIER', 'y'),
                 ('OPERATOR', '='),
                 ('NUMBER', '2.5'),
                 ('SEMICOLON', ';'),
 
-                ('IDENTIFIER', 'float'),
+                ('KEYWORD', 'float'),
                 ('IDENTIFIER', 'z'),
                 ('OPERATOR', '='),
                 ('IDENTIFIER', 'x'),
@@ -104,7 +100,6 @@ def run_tests(lexer_func, parser_func):
                 ('DECLARATION', 'float', 'z', ('/', 'x', 'y'))
             ]
         },
-        # Test 5: Asignaciones con diferentes operaciones y paréntesis
         {
             "codigo": """
             a = 5;
@@ -142,42 +137,38 @@ def run_tests(lexer_func, parser_func):
                 ('ASSIGNMENT', 'c', ('*', 'b', ('+', 'a', 2)))
             ]
         },
-        # Test 6: Expresión compleja con múltiples operaciones y paréntesis
         {
             "codigo": "result = a + b * c - 2 / 4;",
             "descripcion": "Expresión compleja con múltiples operaciones y paréntesis",
             "salida_esperada_tokens": [
-                ("IDENTIFIER", 'result'),
-                ('OPERATOR', '='),
-                ('IDENTIFIER', 'a'),
-                ('OPERATOR', '+'),
-                ('IDENTIFIER', 'b'),
-                ('OPERATOR', '*'),
-                ('IDENTIFIER', 'c'),
-                ('OPERATOR', '-'),
-                ('NUMBER', '2'),
-                ('OPERATOR', '/'),
-                ('NUMBER', '4'),
-                ('SEMICOLON', ';')
+                ("IDENTIFIER", "result"),
+                ("OPERATOR", "="),
+                ("IDENTIFIER", "a"),
+                ("OPERATOR", "+"),
+                ("IDENTIFIER", "b"),
+                ("OPERATOR", "*"),
+                ("IDENTIFIER", "c"),
+                ("OPERATOR", "-"),
+                ("NUMBER", "2"),
+                ("OPERATOR", "/"),
+                ("NUMBER", "4"),
+                ("SEMICOLON", ";")
             ],
-            'salida_esperada_ast': [
+
+            "salida_esperada_ast": [
                 ('ASSIGNMENT', 'result',
                     ('-',
-                        ('+',
-                            'a',
-                            ('*', 'b', 'c')
-                        ),
+                        ('+', 'a', ('*', 'b', 'c')),
                         ('/', 2, 4)
                     )
                 )
             ]
         },
-        # Test 7: Declaración de variable sin asignación
         {
             "codigo": "int x;",
             "descripcion": "Inicialización de una variable sin asignación de valor",
             "salida_esperada_tokens": [
-                ('IDENTIFIER', 'int'),
+                ('KEYWORD', 'int'),
                 ('IDENTIFIER', 'x'),
                 ('SEMICOLON', ';')
             ],
@@ -185,47 +176,123 @@ def run_tests(lexer_func, parser_func):
                 ('DECLARATION', 'int', 'x')
             ]
         },
-        #test 8: Error de sintaxis
         {
             "codigo": """
-            a = 5;
-            b = a - 3;
-            c = b * (a + 2);
-            """,
-            "descripcion": "Error de sintaxis por paréntesis no cerrado",
+            if (x > y){
+                z = 1;
+            }""",
+            "descripcion": "Estructura if con llave de apertura en otra línea",
+            "salida_esperada_tokens": [
+                ("KEYWORD", "if"),
+                ("LPAREN", "("),
+                ("IDENTIFIER", "x"),
+                ("GREATER", ">"),
+                ("IDENTIFIER", "y"),
+                ("RPAREN", ")"),
+                ("LBRACE", "{"),
+                ("IDENTIFIER", "z"),
+                ("OPERATOR", "="),
+                ("NUMBER", "1"),
+                ("SEMICOLON", ";"),
+                ("RBRACE", "}")
+            ],
+            "salida_esperada_ast": [
+                ('IF', ('>', 'x', 'y'), [
+                    ('ASSIGNMENT', 'z', 1)
+                ])
+            ]
+        },
+        {
+            "codigo": "a = (b + 2;",
+            "descripcion": "Paréntesis no balanceados",
             "salida_esperada_tokens": [
                 ('IDENTIFIER', 'a'),
                 ('OPERATOR', '='),
-                ('NUMBER', '5'),
-                ('SEMICOLON', ';'),
-
-                ('IDENTIFIER', 'b'),
-                ('OPERATOR', '='),
-                ('IDENTIFIER', 'a'),
-                ('OPERATOR', '-'),
-                ('NUMBER', '3'),
-                ('SEMICOLON', ';'),
-
-                ('IDENTIFIER', 'c'),
-                ('OPERATOR', '='),
-                ('IDENTIFIER', 'b'),
-                ('OPERATOR', '*'),
                 ('LPAREN', '('),
-                ('IDENTIFIER', 'a'),
+                ('IDENTIFIER', 'b'),
                 ('OPERATOR', '+'),
                 ('NUMBER', '2'),
-                ('RPAREN', ')'),  # Aquí falta el paréntesis de cierre
                 ('SEMICOLON', ';')
             ],
+            "salida_esperada_ast": None,
+            "error_esperado": "Error en línea 1, columna 11: se esperaba RPAREN ')' pero se encontró ';'"
+        },
+        {
+            "codigo": """
+            if (x < 5) {
+                y = 2;
+            """,
+            "descripcion": "Llave de cierre faltante en if",
+            "salida_esperada_tokens": [
+                ('KEYWORD', 'if'),
+                ('LPAREN', '('),
+                ('IDENTIFIER', 'x'),
+                ('LESS', '<'),
+                ('NUMBER', '5'),
+                ('RPAREN', ')'),
+                ('LBRACE', '{'),
+                ('IDENTIFIER', 'y'),
+                ('OPERATOR', '='),
+                ('NUMBER', '2'),
+                ('SEMICOLON', ';'),
+            ],
+            "salida_esperada_ast": None,
+            "error_esperado": "Error en línea 2, columna 16: falta '}' de cierre en el bloque 'if'"
+        },
+        {
+            "codigo": "int a = 5",
+            "descripcion": "Asignación sin punto y coma",
+            "salida_esperada_tokens": [
+                ('KEYWORD', 'int'),
+                ('IDENTIFIER', 'a'),
+                ('OPERATOR', '='),
+                ('NUMBER', '5')
+            ],
+            "salida_esperada_ast": None,
+            "error_esperado": "Error en línea 1: se esperaba ';', pero no se encontró más tokens."
+        },
+        {
+            "codigo": "a = 3 + * 4;",
+            "descripcion": "Uso de operador inválido o mal formado",
+            "salida_esperada_tokens": [
+                ('IDENTIFIER', 'a'),
+                ('OPERATOR', '='),
+                ('NUMBER', '3'),
+                ('OPERATOR', '+'),
+                ('OPERATOR', '*'),
+                ('NUMBER', '4'),
+                ('SEMICOLON', ';')
+            ],
+            "salida_esperada_ast": None,
+            "error_esperado": "Error en línea 1, columna 9: token inesperado '*' en expresión"
+        },
+        {
+            "codigo": """
+            a = "Hola Mundo";
+            b = 'H';
+            """,
+            "descripcion": "Asignación de string y carácter",
+            "salida_esperada_tokens": [
+                ("IDENTIFIER", "a"),
+                ("OPERATOR", "="),
+                ("STRING", "\"Hola Mundo\""),
+                ("SEMICOLON", ";"),
+                ("IDENTIFIER", "b"),
+                ("OPERATOR", "="),
+                ("CHAR", "'H'"),
+                ("SEMICOLON", ";")
+            ],
             "salida_esperada_ast": [
-                ('ASSIGNMENT', 'a', 5),
-                ('ASSIGNMENT', 'b', ('-', 'a', 3)),
-                ('ASSIGNMENT', 'c', ('*', 'b', ('+', 'a', 2)))
+                ("ASSIGNMENT", "a", "\"Hola Mundo\""),
+                ("ASSIGNMENT", "b", "'H'")
             ]
-        }
-    ]
 
-    # Ejecutar cada test
+        }
+
+    ]
+                              
+
+
     for i, ejemplo in enumerate(ejemplos, 1):
         print(f"\n=== Test {i}: {ejemplo['descripcion']} ===")
         print("Código fuente:")
@@ -233,58 +300,66 @@ def run_tests(lexer_func, parser_func):
 
         # Análisis Léxico
         try:
-            tokens_crudos = lexer_func(ejemplo['codigo'])   # Llamar al lexer
-            tokens = normalizar_tokens(tokens_crudos)       # Normalizar tokens
-            print("Tokens obtenidos:")
+            tokens_completos = lexer_func(ejemplo['codigo'])
+            # Extraemos solo (token_type, token_value)
+            tokens = [(t[0], t[1]) for t in tokens_completos]
+            print("Tokens obtenidos (tipo, valor):")
             print(tokens)
             print("Tokens esperados:")
             print(ejemplo['salida_esperada_tokens'])
         except Exception as e:
             print(f"Error en análisis léxico: {e}")
+            print("Test fallido ❌")
             continue
 
         if tokens == ejemplo['salida_esperada_tokens']:
             print("Tokens correctos ✔️")
         else:
             print("Tokens incorrectos ❌")
+            print("Test fallido ❌")
+            
 
         # Análisis Sintáctico
+        error_esperado = ejemplo.get('error_esperado')
         try:
-            ast = parser_func(tokens_crudos)
+            ast = parser_func(tokens_completos)  # Pasamos tokens completos o los que tu parser espera
+
+            if error_esperado:
+                print("❌ Se esperaba un error, pero el parser devolvió un AST.")
+                print("AST obtenido:")
+                print(ast)
+                print("Test fallido ❌")
+                continue
+
             print("AST obtenido:")
             print(ast)
             print("AST esperado:")
             print(ejemplo['salida_esperada_ast'])
+
+            if ast == ejemplo['salida_esperada_ast']:
+                print("AST correcto ✔️")
+                print("Test exitoso ✅")
+            else:
+                print("AST incorrecto ❌")
+                print("Test fallido ❌")
+
         except Exception as e:
             print(f"Error en análisis sintáctico: {e}")
             print("No se pudo obtener AST.")
-            print("AST esperado:")
-            print(ejemplo['salida_esperada_ast'])
-            print("Test fallido ❌")
-            continue
 
-        if ast == ejemplo['salida_esperada_ast']:
-            print("AST correcto ✔️")
-        else:
-            print("AST incorrecto ❌")
-
-# Normalizar tokens para comparación
-def normalizar_tokens(tokens):
-        """
-        Convierte los tokens del nuevo lexer al formato ('TYPE', 'VALUE') para comparación.
-        Ajusta aquí si los tokens vienen como objetos.
-        """
-        tokens_filtrados = []   # Lista para almacenar los tokens filtrados
-        for tok in tokens:
-            # Si el token es una tupla antigua, no hacer nada
-            if isinstance(tok, tuple):
-                tokens_filtrados.append(tok)    # Añadir el token tal cual
+            if error_esperado:
+                if error_esperado in str(e):
+                    print("Error esperado correcto ✔️")
+                    print("Test exitoso ✅")
+                else:
+                    print("❌ El error no coincide con el esperado.")
+                    print("Error esperado:")
+                    print(error_esperado)
+                    print("Test fallido ❌")
             else:
-                # Si el token es un diccionario, extraer tipo y valor
-                if tok["type"] and tok["value"]:
-                    if tok["type"] not in {"COMMENT", "WHITESPACE"}: # Ignorar comentarios y espacios
-                        tokens_filtrados.append((tok["type"], tok["value"])) # Añadir el token normalizado
-        return tokens_filtrados # Retornar la lista de tokens filtrados
+                print("❌ No se esperaba un error.")
+                print("Test fallido ❌")
+
 
 if __name__ == "__main__":
     run_tests(lexer, parser)
