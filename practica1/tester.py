@@ -3,6 +3,7 @@ from parser import parser
 
 def run_tests(lexer_func, parser_func):
     ejemplos = [
+        # Ejemplo 1 declaración con comentario al inicio
         {
             "codigo": """
             // Declaración con comentario
@@ -20,6 +21,7 @@ def run_tests(lexer_func, parser_func):
                 ('DECLARATION', 'int', 'count', 0)
             ]
         },
+        # Ejemplo 2 expresion con paréntesis y multiplicación
         {
             "codigo": "result = (a + b) * 2;",
             "descripcion": "Expresión con paréntesis y multiplicación",
@@ -39,6 +41,7 @@ def run_tests(lexer_func, parser_func):
                 ('ASSIGNMENT', 'result', ('*', ('+', 'a', 'b'), 2))
             ]
         },
+        # Ejemplo 3 condicional simple con igualdad y bloque
         {
             "codigo": """
             if (a == b) {
@@ -66,6 +69,7 @@ def run_tests(lexer_func, parser_func):
                 ])
             ]
         },
+        # Ejemplo 4 declaración y expresión con división
         {
             "codigo": """
             float x = 1.5;
@@ -100,6 +104,7 @@ def run_tests(lexer_func, parser_func):
                 ('DECLARATION', 'float', 'z', ('/', 'x', 'y'))
             ]
         },
+        # Ejemplo 5 asignaciones con diferentes operaciones y paréntesis
         {
             "codigo": """
             a = 5;
@@ -137,6 +142,7 @@ def run_tests(lexer_func, parser_func):
                 ('ASSIGNMENT', 'c', ('*', 'b', ('+', 'a', 2)))
             ]
         },
+        # Ejemplo 6 expresión compleja con múltiples operaciones y paréntesis
         {
             "codigo": "result = a + b * c - 2 / 4;",
             "descripcion": "Expresión compleja con múltiples operaciones y paréntesis",
@@ -164,6 +170,7 @@ def run_tests(lexer_func, parser_func):
                 )
             ]
         },
+        # Ejemplo 7 inicialización de variable sin asignación de valor
         {
             "codigo": "int x;",
             "descripcion": "Inicialización de una variable sin asignación de valor",
@@ -176,6 +183,7 @@ def run_tests(lexer_func, parser_func):
                 ('DECLARATION', 'int', 'x')
             ]
         },
+        # Ejemplo 8 estructura if con llave de apertura en otra línea
         {
             "codigo": """
             if (x > y){
@@ -202,6 +210,7 @@ def run_tests(lexer_func, parser_func):
                 ])
             ]
         },
+        # Ejemplo 9 paréntesis no balanceados
         {
             "codigo": "a = (b + 2;",
             "descripcion": "Paréntesis no balanceados",
@@ -217,6 +226,7 @@ def run_tests(lexer_func, parser_func):
             "salida_esperada_ast": None,
             "error_esperado": "Error en línea 1, columna 11: se esperaba RPAREN ')' pero se encontró ';'"
         },
+        # Ejemplo 10 llave de cierre faltante en if
         {
             "codigo": """
             if (x < 5) {
@@ -239,6 +249,7 @@ def run_tests(lexer_func, parser_func):
             "salida_esperada_ast": None,
             "error_esperado": "Error en línea 2, columna 16: falta '}' de cierre en el bloque 'if'"
         },
+        # Ejemplo 11 asignación sin punto y coma
         {
             "codigo": "int a = 5",
             "descripcion": "Asignación sin punto y coma",
@@ -249,8 +260,9 @@ def run_tests(lexer_func, parser_func):
                 ('NUMBER', '5')
             ],
             "salida_esperada_ast": None,
-            "error_esperado": "Error en línea 1: se esperaba ';', pero no se encontró más tokens."
+            "error_esperado": "Error: se esperaba ',' o ';' pero no se encontraron más tokens."
         },
+        # Ejemplo 12 uso de operador inválido o mal formado
         {
             "codigo": "a = 3 + * 4;",
             "descripcion": "Uso de operador inválido o mal formado",
@@ -266,6 +278,7 @@ def run_tests(lexer_func, parser_func):
             "salida_esperada_ast": None,
             "error_esperado": "Error en línea 1, columna 9: token inesperado '*' en expresión"
         },
+        # Ejemplo 13 asignación de string y carácter
         {
             "codigo": """
             a = "Hola Mundo";
@@ -287,8 +300,62 @@ def run_tests(lexer_func, parser_func):
                 ("ASSIGNMENT", "b", "'H'")
             ]
 
+        },
+        # Ejemplo 14 declaración y asignación en la misma línea (válido)
+        {
+            "codigo": "int a = 1, b = 2;",
+            "descripcion": "Declaración de múltiples variables con asignación en la misma línea",
+            "salida_esperada_tokens": [
+                ('KEYWORD', 'int'),
+                ('IDENTIFIER', 'a'),
+                ('OPERATOR', '='),
+                ('NUMBER', '1'),
+                ('COMMA', ','),
+                ('IDENTIFIER', 'b'),
+                ('OPERATOR', '='),
+                ('NUMBER', '2'),
+                ('SEMICOLON', ';')
+            ],
+            "salida_esperada_ast": [
+                ('DECLARATION', 'int', 'a', 1),
+                ('DECLARATION', 'int', 'b', 2)
+            ]
+        },
+        # Ejemplo 15 error sintáctico: palabra reservada mal escrita
+        {
+            "codigo": "iff (x == 1) { y = 2; }",
+            "descripcion": "Palabra reservada mal escrita (error sintáctico)",
+            "salida_esperada_tokens": [
+                ('IDENTIFIER', 'iff'),
+                ('LPAREN', '('),
+                ('IDENTIFIER', 'x'),
+                ('EQUALS', '=='),
+                ('NUMBER', '1'),
+                ('RPAREN', ')'),
+                ('LBRACE', '{'),
+                ('IDENTIFIER', 'y'),
+                ('OPERATOR', '='),
+                ('NUMBER', '2'),
+                ('SEMICOLON', ';'),
+                ('RBRACE', '}')
+            ],
+            "salida_esperada_ast": None,
+            "error_esperado": "Error en línea 1, columna 1: se esperaba 'if', pero se encontró 'iff'"
+        },
+        # Ejemplo 16 caso límite: expresión vacía entre paréntesis
+        {
+            "codigo": "a = ();",
+            "descripcion": "Expresión vacía entre paréntesis (caso límite)",
+            "salida_esperada_tokens": [
+                ('IDENTIFIER', 'a'),
+                ('OPERATOR', '='),
+                ('LPAREN', '('),
+                ('RPAREN', ')'),
+                ('SEMICOLON', ';')
+            ],
+            "salida_esperada_ast": None,
+            "error_esperado": "Error en línea 1, columna 6: token inesperado ')' en expresión"
         }
-
     ]
                               
 

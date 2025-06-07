@@ -22,6 +22,7 @@ token_definitions = [
     ('LBRACE', r'\{'),  # Llave de apertura
     ('RBRACE', r'\}'),  # Llave de cierre
     ('SEMICOLON', r';'),  # Punto y coma
+    ('COMMA', r','),  # Coma para separar variables
     ('WHITESPACE', r'\s+'),  # Espacios en blanco
 ]
 
