@@ -22,7 +22,11 @@ def parser(tokens):
     # Procesar todos los tokens, agregando la estructura a 'ast'
     while tokens:
         try:
-            ast.append(parse_statement(tokens))  # Llamar a la función que parsea las sentencias
+            stmt = parse_statement(tokens)
+            if isinstance(stmt, list):
+                ast.extend(stmt)  # Añade cada declaración individualmente
+            else:
+                ast.append(stmt)
         except SyntaxError as e:  # Si ocurre un error de sintaxis, lo propagamos
             raise SyntaxError(str(e))
     
@@ -40,8 +44,16 @@ def parse_statement(tokens):
 
     # Si el primer token es un identificador, procesamos una asignación
     elif match(tokens, 'IDENTIFIER'):
+        # Mejorar el mensaje de error para palabras reservadas mal escritas
+        ident = tokens[0][1]
+        if ident in ('iff', 'els', 'whle', 'retrun', 'fro'):  # Se puede ampliar esta lista por errores comunes
+            _, val, line, col = tokens[0]
+            raise SyntaxError(f"Error en línea {line}, columna {col}: se esperaba 'if', pero se encontró '{val}'")
+        # Si el siguiente token es LPAREN, es una llamada a función
+        if len(tokens) > 1 and tokens[1][0] == 'LPAREN':
+            return parse_function_call(tokens)
+        # Si no, es una asignación
         return parse_assignment(tokens)
-
     # Si no es ninguno de los anteriores, es un error de sintaxis
     else:
         tipo, val, line, col = tokens[0]
@@ -50,18 +62,45 @@ def parse_statement(tokens):
 # Función para procesar una declaración (ejemplo: int a = 5;)
 def parse_declaration(tokens):
     tipo = parse_type(tokens)  # Procesa el tipo de la declaración (ej. 'int', 'float')
-    ident = parse_id(tokens)  # Procesa el identificador (ej. 'a')
+    declarations = []
 
-    # Si el siguiente token es un punto y coma, significa que la declaración está completa
-    if match(tokens, 'SEMICOLON'):
-        tokens.pop(0)  # Consumir el token ';'
-        return ('DECLARATION', tipo, ident)  # Retorna la estructura de la declaración
-    
-    # Si no es un punto y coma, debe ser una asignación
-    parse_equals(tokens)  # Procesa el operador de asignación '='
-    expr = parse_expression(tokens)  # Procesa la expresión a la derecha del '='
-    parse_semi(tokens)  # Procesa el punto y coma al final
-    return ('DECLARATION', tipo, ident, expr)  # Retorna la declaración con la expresión
+    while True:
+        ident = parse_id(tokens)  # Procesa el identificador (ej. 'a')
+
+        # Si el siguiente token es un punto y coma, la declaración está completa
+        if match(tokens, 'SEMICOLON'):
+            declarations.append(('DECLARATION', tipo, ident))
+            tokens.pop(0)  # Consumir el token ';'
+            break
+
+        # Si es una asignación
+        if match(tokens, 'OPERATOR', '='):
+            parse_equals(tokens)
+            expr = parse_expression(tokens)
+            declarations.append(('DECLARATION', tipo, ident, expr))
+        else:
+            declarations.append(('DECLARATION', tipo, ident))
+
+        # Si hay una coma, seguimos con la siguiente variable
+        if match(tokens, 'COMMA'):
+            tokens.pop(0)  # Consumir la coma y continuar
+            continue
+
+        # Si hay un punto y coma, terminamos la declaración
+        if match(tokens, 'SEMICOLON'):
+            tokens.pop(0)
+            break
+
+        # Si no hay ni coma ni punto y coma, es un error
+        if tokens:
+            val, line, col = tokens[0]
+            raise SyntaxError(f"Error en línea {line}, columna {col}: se esperaba ',' o ';' pero se encontró '{val}'")
+        else:
+            raise SyntaxError("Error: se esperaba ',' o ';' pero no se encontraron más tokens.")
+
+    # Si solo hay una declaración, retorna el elemento, si hay varias, retorna la lista
+    return declarations if len(declarations) > 1 else declarations[0]
+
 # Función para procesar una asignación, por ejemplo: 'a = 5'
 def parse_assignment(tokens):
     # Procesar el identificador (ej. 'a')
@@ -162,6 +201,20 @@ def parse_mul_div(tokens):
 
 # Función para procesar los operandos primarios (números, identificadores o paréntesis)
 def parse_primary(tokens):
+    # Soporte para cast: int("5") o float(x)
+    if match_keyword(tokens, 'int') or match_keyword(tokens, 'float'):
+        cast_type = tokens.pop(0)[1]  # 'int' o 'float'
+        if not match(tokens, 'LPAREN'):
+            tipo, val, line, col = tokens[0]
+            raise SyntaxError(f"Error en línea {line}, columna {col}: se esperaba '(' después de '{cast_type}' para conversión de tipo.")
+        tokens.pop(0)  # Consume LPAREN
+        expr = parse_expression(tokens)
+        if not match(tokens, 'RPAREN'):
+            tipo, val, line, col = tokens[0]
+            raise SyntaxError(f"Error en línea {line}, columna {col}: se esperaba ')' después de la expresión en conversión de tipo.")
+        tokens.pop(0)  # Consume RPAREN
+        return ('CAST', cast_type, expr)
+    
     # Si encontramos un paréntesis de apertura, procesamos la expresión entre paréntesis
     if match(tokens, 'LPAREN'):
         tokens.pop(0)
@@ -345,3 +398,16 @@ def expect_keyword(tokens, keyword):
             raise SyntaxError(f"Error: se esperaba palabra clave '{keyword}' pero se encontró EOF")
     tokens.pop(0)  # Consume la palabra clave esperada
 
+def parse_function_call(tokens):
+    func_name = tokens.pop(0)[1]  # IDENTIFIER
+    tokens.pop(0)  # LPAREN
+    args = []
+    # Procesa los argumentos hasta RPAREN
+    while not match(tokens, 'RPAREN'):
+        args.append(parse_expression(tokens))
+        if match(tokens, 'COMMA'):
+            tokens.pop(0)
+    tokens.pop(0)  # RPAREN
+    if match(tokens, 'SEMICOLON'):
+        tokens.pop(0)
+    return ('CALL', func_name, args)
