@@ -38,7 +38,18 @@ def run_semantic_tests():
             "error_esperado": "Error semántico: no se puede operar entre 'string' y tipo numérico sin conversión explícita."
         },
         {
-            "codigo": "int x =3; if (x >0) { print(x); }",
+            "codigo": "bool activo = !false;",
+            "descripcion": "Uso válido del operador de negación lógica sobre un booleano",
+            "espera_error": False
+        },
+        {
+            "codigo": "int x = !\"hola\";",
+            "descripcion": "Uso inválido del operador de negación lógica sobre una cadena",
+            "espera_error": True,
+            "error_esperado": "Error semántico: el operador '!' solo puede aplicarse a valores booleanos, se encontró 'string'."
+        },
+        {
+            "codigo": "int x = 5; if(x > 5) {print(x);}",
             "descripcion": "Aplicación correcta de condición con variable declarada",
             "espera_error": False,
         },
@@ -47,7 +58,7 @@ def run_semantic_tests():
             "descripcion": "Aplicación incorrecta de condición con variable no declarada",
             "espera_error": True,
             "error_esperado": "la condición del IF debe ser una expresión booleana, se encontró 'string'"
-        }
+        },
     ]
 
     for i, ejemplo in enumerate(ejemplos, 1):

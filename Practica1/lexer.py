@@ -13,6 +13,7 @@ token_definitions = [
     ('GREATEREQUAL', r'>='),  # Comparación mayor o igual
     ('LESS', r'<'),  # Comparación menor
     ('GREATER', r'>'),  # Comparación mayor
+    ('NOT', r'!'),      # Negación lógica
     ('COMMENT', r'//.*'),  # Comentarios de una sola línea
     ('NUMBER', r'\d+\.\d+|\d+'),  # Números enteros y flotantes
     ('IDENTIFIER', r'[a-zA-Z_]\w*'),  # Identificadores (variables, funciones, etc.)

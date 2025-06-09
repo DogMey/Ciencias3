@@ -1,29 +1,22 @@
 def semantic_analyze(ast, symbol_table=None):
-    print(f"DEBUG: symbol_table RECIBIDO (antes de verificar): {symbol_table}")  # DEBUG TEMPORAL
     if symbol_table is None or not isinstance(symbol_table, dict):
         symbol_table = {}  # Solo crear nuevo si no se pasa uno
 
-    print(f"DEBUG: symbol_table inicial: {symbol_table}")  # DEBUG
-
     for node in ast:
         node_type = node[0]
-        print(f"DEBUG: Procesando nodo: {node}")  # DEBUG
 
         if node_type == "DECLARATION":
             handle_declaration(node, symbol_table)
-            print(f"DEBUG: Después de DECLARATION, symbol_table: {symbol_table}")  # DEBUG
         elif node_type == "ASSIGNMENT":
             handle_assignment(node, symbol_table)
         elif node_type == "CALL":
             handle_call(node, symbol_table)
         elif node_type == "IF":
-            print(f"DEBUG: Antes de IF, symbol_table: {symbol_table}")  # DEBUG
             handle_if_statement(node, symbol_table)
         elif node_type == "WHILE":
             handle_while_statement(node, symbol_table)
         elif node_type == "FOR":
             handle_for_statement(node, symbol_table)
-        # Puedes agregar más casos aquí
 
     return True  # Si no hay errores
 
@@ -58,7 +51,6 @@ def handle_call(node, symbol_table):
             continue
         elif isinstance(arg, str) and arg not in symbol_table:
             raise Exception(f"Error semántico: la variable '{arg}' no ha sido declarada.")
-        # Si el argumento es una expresión, podrías evaluarla aquí
 
 def eval_expression_type(expr, symbol_table):
     # Si es un número entero
@@ -120,7 +112,7 @@ def eval_expression_type(expr, symbol_table):
         if op in ('!', 'NOT'):
             operand_type = eval_expression_type(expr[1], symbol_table)
             if not is_boolean_expression(expr[1], operand_type):
-                raise Exception(f"Error semántico: operando debe ser booleano en operación '{op}'.")
+                raise Exception(f"Error semántico: el operador '!' solo puede aplicarse a valores booleanos, se encontró '{operand_type}'.")
             return 'bool'
         
         # Operadores aritméticos (código original)
@@ -169,12 +161,11 @@ def handle_if_statement(node, symbol_table):
     
     # Validar el bloque then reutilizando semantic_analyze
     if isinstance(then_block, list):
-        print(f"DEBUG: Pasando symbol_table a semantic_analyze: {symbol_table}")  # DEBUG
-        semantic_analyze(then_block)
+        semantic_analyze(then_block, symbol_table=symbol_table)
     
     # Validar el bloque else si existe
     if else_block and isinstance(else_block, list):
-        semantic_analyze(else_block)
+        semantic_analyze(else_block, symbol_table=symbol_table)
 
 def handle_while_statement(node, symbol_table):
     """
@@ -194,7 +185,7 @@ def handle_while_statement(node, symbol_table):
     
     # Validar el bloque del cuerpo
     if isinstance(body_block, list):
-        semantic_analyze(body_block)
+        semantic_analyze(body_block, symbol_table=symbol_table)
 
 def handle_for_statement(node, symbol_table):
     """
@@ -228,7 +219,7 @@ def handle_for_statement(node, symbol_table):
     
     # Validar el bloque del cuerpo
     if isinstance(body_block, list):
-        semantic_analyze(body_block)
+        semantic_analyze(body_block, symbol_table=symbol_table)
 
 def is_boolean_expression(expr, expr_type):
     """
