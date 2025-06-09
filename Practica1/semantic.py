@@ -1,16 +1,23 @@
-def semantic_analyze(ast):
-    symbol_table = {}  # Ámbito global
+def semantic_analyze(ast, symbol_table=None):
+    print(f"DEBUG: symbol_table RECIBIDO (antes de verificar): {symbol_table}")  # DEBUG TEMPORAL
+    if symbol_table is None or not isinstance(symbol_table, dict):
+        symbol_table = {}  # Solo crear nuevo si no se pasa uno
+
+    print(f"DEBUG: symbol_table inicial: {symbol_table}")  # DEBUG
 
     for node in ast:
         node_type = node[0]
+        print(f"DEBUG: Procesando nodo: {node}")  # DEBUG
 
         if node_type == "DECLARATION":
             handle_declaration(node, symbol_table)
+            print(f"DEBUG: Después de DECLARATION, symbol_table: {symbol_table}")  # DEBUG
         elif node_type == "ASSIGNMENT":
             handle_assignment(node, symbol_table)
         elif node_type == "CALL":
             handle_call(node, symbol_table)
         elif node_type == "IF":
+            print(f"DEBUG: Antes de IF, symbol_table: {symbol_table}")  # DEBUG
             handle_if_statement(node, symbol_table)
         elif node_type == "WHILE":
             handle_while_statement(node, symbol_table)
@@ -162,6 +169,7 @@ def handle_if_statement(node, symbol_table):
     
     # Validar el bloque then reutilizando semantic_analyze
     if isinstance(then_block, list):
+        print(f"DEBUG: Pasando symbol_table a semantic_analyze: {symbol_table}")  # DEBUG
         semantic_analyze(then_block)
     
     # Validar el bloque else si existe
