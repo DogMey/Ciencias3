@@ -36,6 +36,17 @@ def run_semantic_tests():
             "descripcion": "Asignación inválida de suma de string y entero a variable entera",
             "espera_error": True,
             "error_esperado": "Error semántico: no se puede operar entre 'string' y tipo numérico sin conversión explícita."
+        },
+        {
+            "codigo": "int x =3; if (x >0) { print(x); }",
+            "descripcion": "Aplicación correcta de condición con variable declarada",
+            "espera_error": False,
+        },
+        {
+            "codigo": "if (\"texto\") { int x = 5; }",
+            "descripcion": "Aplicación incorrecta de condición con variable no declarada",
+            "espera_error": True,
+            "error_esperado": "la condición del IF debe ser una expresión booleana, se encontró 'string'"
         }
     ]
 
