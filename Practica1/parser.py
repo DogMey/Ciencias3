@@ -41,12 +41,20 @@ def parse_statement(tokens):
     # Si el primer token es 'if', procesamos una estructura condicional
     elif match_keyword(tokens, 'if'):
         return parse_if(tokens)
+    
+    # Si el primer token es 'for', procesamos un bucle for
+    elif match_keyword(tokens, 'for'):
+        return parse_for(tokens)
+
+    # Si el primer token es 'while', procesamos un bucle while
+    elif match_keyword(tokens, 'while'):
+        return parse_while(tokens)
 
     # Si el primer token es un identificador, procesamos una asignación
     elif match(tokens, 'IDENTIFIER'):
         # Mejorar el mensaje de error para palabras reservadas mal escritas
         ident = tokens[0][1]
-        if ident in ('iff', 'els', 'whle', 'retrun', 'fro'):  # Se puede ampliar esta lista por errores comunes
+        if ident in ('iff', 'els', 'whle', 'retrun', 'fro', 'foor', 'whille'):  # Se puede ampliar esta lista por errores comunes
             _, val, line, col = tokens[0]
             raise SyntaxError(f"Error en línea {line}, columna {col}: se esperaba 'if', pero se encontró '{val}'")
         # Si el siguiente token es LPAREN, es una llamada a función
@@ -411,3 +419,89 @@ def parse_function_call(tokens):
     if match(tokens, 'SEMICOLON'):
         tokens.pop(0)
     return ('CALL', func_name, args)
+
+def parse_for(tokens):
+    expect_keyword(tokens, 'for')   # Verificamos si el primer token es la palabra clave 'for'
+    for_line, for_col = tokens[0][2], tokens[0][3] # Guardamos la información de la línea y columna del 'for' para mostrarla en caso de error
+    
+    expect(tokens, 'LPAREN')    # Espera el paréntesis de apertura '('
+    
+    init = None # Procesa la inicialización del for (debe ser declaración completa o asignación completa)
+    if match_keyword(tokens, 'int') or match_keyword(tokens, 'float'):
+        init = parse_declaration(tokens)    # Declaración: for(int i = 0; ...)
+    elif match(tokens, 'IDENTIFIER'):
+        init = parse_assignment(tokens) # Asignación: for(i = 0; ...)
+    elif match(tokens, 'SEMICOLON'):
+        # Inicialización vacía: for(; ...)
+        tokens.pop(0)  # Consumir el ';'
+    else:
+        tipo, val, line, col = tokens[0]
+        raise SyntaxError(f"Error en línea {line}, columna {col}: se esperaba inicialización en bucle 'for', pero se encontró '{val}'")
+
+    # Procesa la condición del for
+    condition = None
+    if not match(tokens, 'SEMICOLON'):
+        condition = parse_expression(tokens)
+    expect(tokens, 'SEMICOLON') # Espera el punto y coma después de la condición
+
+    # Procesa el incremento del for
+    increment = None
+    if not match(tokens, 'RPAREN'):
+        if match(tokens, 'IDENTIFIER'):
+            increment = parse_assignment(tokens)
+        else:
+            tipo, val, line, col = tokens[0]
+            raise SyntaxError(f"Error en línea {line}, columna {col}: se esperaba incremento en bucle 'for', pero se encontró '{val}'")
+    expect(tokens, 'RPAREN')    # Espera el paréntesis de cierre ')'
+    
+    # Espera la llave de apertura '{'
+    expect(tokens, 'LBRACE')
+
+    # Procesar el cuerpo del bucle
+    body = []
+    while tokens and not match(tokens, 'RBRACE'):
+        body.append(parse_statement(tokens))
+
+    # Si no hemos encontrado la llave de cierre 'RBRACE' y ya no quedan tokens, lanzar error
+    if not match(tokens, 'RBRACE'):
+        raise SyntaxError(f"Error en línea {for_line}, columna {for_col}: falta '}}' de cierre en el bloque 'for'")
+
+    # Consumir la llave de cierre 'RBRACE'
+    tokens.pop(0)
+
+    # Retorna la estructura del bucle 'for'
+    return ('FOR', init, condition, increment, body)
+
+# Función para procesar un bucle 'while'
+def parse_while(tokens):
+    expect_keyword(tokens, 'while') # Verificamos si el primer token es la palabra clave 'while'
+
+    # Guardamos la información de la línea y columna del 'while' para mostrarla en caso de error
+    while_line, while_col = tokens[0][2], tokens[0][3]
+
+    # Espera el paréntesis de apertura '('
+    expect(tokens, 'LPAREN')
+
+    # Procesa la condición del while
+    condition = parse_expression(tokens)
+
+    # Espera el paréntesis de cierre ')'
+    expect(tokens, 'RPAREN')
+    
+    # Espera la llave de apertura '{'
+    expect(tokens, 'LBRACE')
+
+    # Procesar el cuerpo del bucle
+    body = []
+    while tokens and not match(tokens, 'RBRACE'):
+        body.append(parse_statement(tokens))
+
+    # Si no hemos encontrado la llave de cierre 'RBRACE' y ya no quedan tokens, lanzar error
+    if not match(tokens, 'RBRACE'):
+        raise SyntaxError(f"Error en línea {while_line}, columna {while_col}: falta '}}' de cierre en el bloque 'while'")
+
+    # Consumir la llave de cierre 'RBRACE'
+    tokens.pop(0)
+
+    # Retorna la estructura del bucle 'while'
+    return ('WHILE', condition, body)
