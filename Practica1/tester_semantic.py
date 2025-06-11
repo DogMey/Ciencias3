@@ -107,9 +107,7 @@ def run_semantic_tests():
 
         try:
             tokens = lexer(ejemplo['codigo'])
-            print(tokens)
             ast = parser(tokens)
-            print(ast)
             semantic_analyze(ast)
             if ejemplo["espera_error"]:
                 print("❌ Se esperaba un error semántico, pero no ocurrió.")
