@@ -16,7 +16,7 @@ def run_semantic_tests():
             "error_esperado": "Error semántico: la variable 'x' no ha sido declarada."
         },
                 {
-            "codigo": "int x = 2 + 3;",
+            "codigo": "int x = 2 + 3; print(x);",
             "descripcion": "Asignación válida de suma de enteros a variable entera",
             "espera_error": False
         },
@@ -27,7 +27,7 @@ def run_semantic_tests():
             "error_esperado": "Error semántico: no se puede asignar un valor de tipo 'string' a una variable de tipo 'int'."
         },
         {
-            "codigo": "int x = int(\"5\");",
+            "codigo": "int x = int(\"5\"); print(x);",
             "descripcion": "Asignación válida de conversión de string a int",
             "espera_error": False
         },
@@ -38,7 +38,7 @@ def run_semantic_tests():
             "error_esperado": "Error semántico: no se puede operar entre 'string' y tipo numérico sin conversión explícita."
         },
         {
-            "codigo": "bool activo = !false;",
+            "codigo": "bool activo = !false; print(activo);",
             "descripcion": "Uso válido del operador de negación lógica sobre un booleano",
             "espera_error": False
         },
@@ -58,6 +58,45 @@ def run_semantic_tests():
             "descripcion": "Aplicación incorrecta de condición con variable no declarada",
             "espera_error": True,
             "error_esperado": "la condición del IF debe ser una expresión booleana, se encontró 'string'"
+        },
+                {
+            "codigo": "const PI = 3.14; print(PI);",
+            "descripcion": "Declaración válida de constante",
+            "espera_error": False
+        },
+        {
+            "codigo": "const PI = 3.14; PI = 3.1416;",
+            "descripcion": "Intento de modificar una constante",
+            "espera_error": True,
+            "error_esperado": "Error semántico: no se puede modificar la constante 'PI'."
+        },
+        {
+            "codigo": "int edadUsuario; print(edadUsuario);",
+            "descripcion": "Declaración válida de variable con identificador correcto",
+            "espera_error": False
+        },
+        {
+            "codigo": "int 2edad;",
+            "descripcion": "Declaración inválida de variable: identificador no puede comenzar con un número",
+            "espera_error": True,
+            "error_esperado": "Error en línea 1, columna 5: se esperaba identificador, pero se encontró '2'"
+        },
+        {
+            "codigo": "int x = 0;",
+            "descripcion": "Declaración de variable no utilizada",
+            "espera_error": True,
+            "error_esperado": "Advertencia: la variable 'x' fue declarada pero nunca utilizada."
+        },
+        {
+            "codigo": "int x = 0; x = x + 1;",
+            "descripcion": "Asignación válida a variable inicializada",
+            "espera_error": False
+        },
+        {
+            "codigo": "x = x + 1;",
+            "descripcion": "Uso de variable no inicializada",
+            "espera_error": True,
+            "error_esperado": "Error semántico: la variable 'x' no ha sido declarada."
         },
     ]
 

@@ -1,26 +1,35 @@
-def semantic_analyze(ast, symbol_table=None):
+def semantic_analyze(ast, symbol_table=None, usage_table=None):
     if symbol_table is None or not isinstance(symbol_table, dict):
         symbol_table = {}  # Solo crear nuevo si no se pasa uno
+    if usage_table is None:
+        usage_table = {}
 
     for node in ast:
         node_type = node[0]
 
         if node_type == "DECLARATION":
-            handle_declaration(node, symbol_table)
+            handle_declaration(node, symbol_table, usage_table)
         elif node_type == "ASSIGNMENT":
-            handle_assignment(node, symbol_table)
+            handle_assignment(node, symbol_table, usage_table)
         elif node_type == "CALL":
-            handle_call(node, symbol_table)
+            handle_call(node, symbol_table, usage_table)
         elif node_type == "IF":
-            handle_if_statement(node, symbol_table)
+            handle_if_statement(node, symbol_table, usage_table)
         elif node_type == "WHILE":
-            handle_while_statement(node, symbol_table)
+            handle_while_statement(node, symbol_table, usage_table)
         elif node_type == "FOR":
-            handle_for_statement(node, symbol_table)
+            handle_for_statement(node, symbol_table, usage_table)
+        elif node_type == "CONST_DECLARATION":
+            handle_const_declaration(node, symbol_table, usage_table)
+
+    # Al final, revisa variables no usadas
+    for var, count in usage_table.items():
+        if count == 0:
+            raise Exception(f"Advertencia: la variable '{var}' fue declarada pero nunca utilizada.")
 
     return True  # Si no hay errores
 
-def handle_declaration(node, symbol_table):
+def handle_declaration(node, symbol_table, usage_table):
     var_type = node[1]
     var_name = node[2]
     if var_name in symbol_table:
@@ -32,22 +41,44 @@ def handle_declaration(node, symbol_table):
         if not types_compatible(var_type, expr_type):
             raise Exception(f"Error semántico: no se puede asignar un valor de tipo '{expr_type}' a una variable de tipo '{var_type}'.")
     symbol_table[var_name] = var_type
+    usage_table[var_name] = 0  # Inicialmente no usada
 
-def handle_assignment(node, symbol_table):
+def handle_const_declaration(node, symbol_table, usage_table):
+    """
+    Maneja la declaración de constantes.
+    Estructura esperada: ('CONST_DECLARATION', nombre, valor)
+    """
+    const_name = node[1]
+    expr = node[2]
+    if const_name in symbol_table:
+        raise Exception(f"Error semántico: no se puede modificar la constante '{const_name}'.")
+    expr_type = eval_expression_type(expr, symbol_table)
+    # Guardamos la constante con su tipo y un flag especial
+    symbol_table[const_name] = {'type': expr_type, 'const': True}
+    usage_table[const_name] = 0  # Inicialmente no usada
+
+def handle_assignment(node, symbol_table, usage_table):
     var_name = node[1]
-    if var_name not in symbol_table:
+    if var_name in symbol_table:
+        entry = symbol_table[var_name]
+        # Si es constante, no se puede modificar
+        if isinstance(entry, dict) and entry.get('const', False):
+            raise Exception(f"Error semántico: no se puede modificar la constante '{var_name}'.")
+        var_type = entry['type'] if isinstance(entry, dict) else entry
+    else:
         raise Exception(f"Error semántico: la variable '{var_name}' no ha sido declarada.")
-    var_type = symbol_table[var_name]
     expr = node[2]
     expr_type = eval_expression_type(expr, symbol_table)
     if not types_compatible(var_type, expr_type):
         raise Exception(f"Error semántico: no se puede asignar un valor de tipo '{expr_type}' a una variable de tipo '{var_type}'.")
+    usage_table[var_name] = usage_table.get(var_name, 0) + 1  # Marca como usada
 
-def handle_call(node, symbol_table):
+def handle_call(node, symbol_table, usage_table):
     func_name = node[1]
     arguments = node[2] if len(node) > 2 else []
     for arg in arguments:
         if isinstance(arg, str) and arg in symbol_table:
+            usage_table[arg] = usage_table.get(arg, 0) + 1
             continue
         elif isinstance(arg, str) and arg not in symbol_table:
             raise Exception(f"Error semántico: la variable '{arg}' no ha sido declarada.")
@@ -142,7 +173,7 @@ def types_compatible(var_type, expr_type):
 
 ######################## AGREGANDO PARTE DE CONDICIONES Y FLUJO DE CONTROL #################################
 
-def handle_if_statement(node, symbol_table):
+def handle_if_statement(node, symbol_table, usage_table):
     """
     Maneja la validación semántica de una declaración IF
     Estructura esperada: ("IF", condition, then_block, [else_block])
@@ -161,13 +192,13 @@ def handle_if_statement(node, symbol_table):
     
     # Validar el bloque then reutilizando semantic_analyze
     if isinstance(then_block, list):
-        semantic_analyze(then_block, symbol_table=symbol_table)
-    
+        semantic_analyze(then_block, symbol_table=symbol_table, usage_table=usage_table)
+
     # Validar el bloque else si existe
     if else_block and isinstance(else_block, list):
-        semantic_analyze(else_block, symbol_table=symbol_table)
+        semantic_analyze(else_block, symbol_table=symbol_table, usage_table=usage_table)
 
-def handle_while_statement(node, symbol_table):
+def handle_while_statement(node, symbol_table, usage_table):
     """
     Maneja la validación semántica de una declaración WHILE
     Estructura esperada: ("WHILE", condition, body_block)
@@ -185,9 +216,9 @@ def handle_while_statement(node, symbol_table):
     
     # Validar el bloque del cuerpo
     if isinstance(body_block, list):
-        semantic_analyze(body_block, symbol_table=symbol_table)
+        semantic_analyze(body_block, symbol_table=symbol_table, usage_table=usage_table)
 
-def handle_for_statement(node, symbol_table):
+def handle_for_statement(node, symbol_table, usage_table):
     """
     Maneja la validación semántica de una declaración FOR
     Estructura esperada: ("FOR", init, condition, increment, body_block)
@@ -219,7 +250,7 @@ def handle_for_statement(node, symbol_table):
     
     # Validar el bloque del cuerpo
     if isinstance(body_block, list):
-        semantic_analyze(body_block, symbol_table=symbol_table)
+        semantic_analyze(body_block, symbol_table=symbol_table, usage_table=usage_table)
 
 def is_boolean_expression(expr, expr_type):
     """
@@ -266,7 +297,7 @@ def types_comparable(type1, type2):
     if type1 == type2:
         return True
     
-    # Char y string pueden ser comparables dependiendo del lenguaje
+    # Char y string pueden ser comparables
     string_types = {'string', 'char'}
     if type1 in string_types and type2 in string_types:
         return True

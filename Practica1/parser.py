@@ -49,6 +49,22 @@ def parse_statement(tokens):
     # Si el primer token es 'while', procesamos un bucle while
     elif match_keyword(tokens, 'while'):
         return parse_while(tokens)
+    
+    # Si el primer token es 'const', procesamos declaración de constante
+    elif match_keyword(tokens, 'const'):
+        tokens.pop(0)  # Consumir 'const'
+        # Espera un identificador para el nombre de la constante
+        if not match(tokens, 'IDENTIFIER'):
+            tipo, val, line, col = tokens[0]
+            raise SyntaxError(f"Error en línea {line}, columna {col}: se esperaba el nombre de la constante después de 'const', pero se encontró '{val}'")
+        const_name = parse_id(tokens)
+        # Espera '='
+        parse_equals(tokens)
+        # Procesa el valor de la constante
+        expr = parse_expression(tokens)
+        # Espera ';'
+        parse_semi(tokens)
+        return ('CONST_DECLARATION', const_name, expr)
 
     # Si el primer token es un identificador, procesamos una asignación
     elif match(tokens, 'IDENTIFIER'):
