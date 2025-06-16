@@ -1,305 +1,232 @@
-def semantic_analyze(ast, symbol_table=None, usage_table=None):
-    if symbol_table is None or not isinstance(symbol_table, dict):
-        symbol_table = {}  # Solo crear nuevo si no se pasa uno
+scope_stack = []  # Pila de ámbitos
+symbol_table = {}  # Tabla general de símbolos por ámbito
+
+def enter_scope(name):
+    scope_stack.append(name)
+    symbol_table[name] = {}
+
+def exit_scope():
+    scope_stack.pop()
+
+def current_scope():
+    return scope_stack[-1] if scope_stack else None
+
+def semantic_analyze(ast, usage_table=None):
+    global symbol_table
     if usage_table is None:
         usage_table = {}
+
+    # Inicia ámbito global
+    if not scope_stack:
+        enter_scope("global")
 
     for node in ast:
         node_type = node[0]
 
         if node_type == "DECLARATION":
-            handle_declaration(node, symbol_table, usage_table)
+            handle_declaration(node, usage_table)
         elif node_type == "ASSIGNMENT":
-            handle_assignment(node, symbol_table, usage_table)
+            handle_assignment(node, usage_table)
         elif node_type == "CALL":
-            handle_call(node, symbol_table, usage_table)
+            handle_call(node, usage_table)
         elif node_type == "IF":
-            handle_if_statement(node, symbol_table, usage_table)
+            handle_if_statement(node, usage_table)
         elif node_type == "WHILE":
-            handle_while_statement(node, symbol_table, usage_table)
+            handle_while_statement(node, usage_table)
         elif node_type == "FOR":
-            handle_for_statement(node, symbol_table, usage_table)
+            handle_for_statement(node, usage_table)
         elif node_type == "CONST_DECLARATION":
-            handle_const_declaration(node, symbol_table, usage_table)
+            handle_const_declaration(node, usage_table)
 
-    # Al final, revisa variables no usadas
-    for var, count in usage_table.items():
-        if count == 0:
-            raise Exception(f"Advertencia: la variable '{var}' fue declarada pero nunca utilizada.")
+    if current_scope() == "global":
+        for scope in symbol_table:
+            for var in symbol_table[scope]:
+                if usage_table.get(var, 0) == 0:
+                    raise Exception(f"Advertencia: la variable '{var}' fue declarada pero nunca utilizada.")
 
-    return True  # Si no hay errores
+    return True
 
-def handle_declaration(node, symbol_table, usage_table):
+def declare_variable(name, vtype, usage_table):
+    scope = current_scope()
+    table = symbol_table[scope]
+    if name in table:
+        print(f"Warning: ‘{name}’ shadows a name in scope ‘{scope}’")
+    table[name] = vtype
+    usage_table[name] = 0
+
+def resolve_variable(name):
+    for scope in reversed(scope_stack):
+        table = symbol_table[scope]
+        if name in table:
+            return table[name]
+    return None
+
+def handle_declaration(node, usage_table):
     var_type = node[1]
     var_name = node[2]
-    if var_name in symbol_table:
+    if resolve_variable(var_name) and var_name in symbol_table[current_scope()]:
         raise Exception(f"Error semántico: la variable '{var_name}' ya fue declarada.")
-    # Si hay inicialización, verifica el tipo
     if len(node) > 3:
         expr = node[3]
-        expr_type = eval_expression_type(expr, symbol_table)
+        expr_type = eval_expression_type(expr)
         if not types_compatible(var_type, expr_type):
             raise Exception(f"Error semántico: no se puede asignar un valor de tipo '{expr_type}' a una variable de tipo '{var_type}'.")
-    symbol_table[var_name] = var_type
-    usage_table[var_name] = 0  # Inicialmente no usada
+    declare_variable(var_name, var_type, usage_table)
 
-def handle_const_declaration(node, symbol_table, usage_table):
-    """
-    Maneja la declaración de constantes.
-    Estructura esperada: ('CONST_DECLARATION', nombre, valor)
-    """
+def handle_const_declaration(node, usage_table):
     const_name = node[1]
     expr = node[2]
-    if const_name in symbol_table:
+    if resolve_variable(const_name) and const_name in symbol_table[current_scope()]:
         raise Exception(f"Error semántico: no se puede modificar la constante '{const_name}'.")
-    expr_type = eval_expression_type(expr, symbol_table)
-    # Guardamos la constante con su tipo y un flag especial
-    symbol_table[const_name] = {'type': expr_type, 'const': True}
-    usage_table[const_name] = 0  # Inicialmente no usada
+    expr_type = eval_expression_type(expr)
+    symbol_table[current_scope()][const_name] = {'type': expr_type, 'const': True}
+    usage_table[const_name] = 0
 
-def handle_assignment(node, symbol_table, usage_table):
+def handle_assignment(node, usage_table):
     var_name = node[1]
-    if var_name in symbol_table:
-        entry = symbol_table[var_name]
-        # Si es constante, no se puede modificar
-        if isinstance(entry, dict) and entry.get('const', False):
-            raise Exception(f"Error semántico: no se puede modificar la constante '{var_name}'.")
-        var_type = entry['type'] if isinstance(entry, dict) else entry
-    else:
+    entry = resolve_variable(var_name)
+    if not entry:
         raise Exception(f"Error semántico: la variable '{var_name}' no ha sido declarada.")
+    var_type = entry['type'] if isinstance(entry, dict) else entry
+    if isinstance(entry, dict) and entry.get('const', False):
+        raise Exception(f"Error semántico: no se puede modificar la constante '{var_name}'.")
     expr = node[2]
-    expr_type = eval_expression_type(expr, symbol_table)
+    expr_type = eval_expression_type(expr)
     if not types_compatible(var_type, expr_type):
         raise Exception(f"Error semántico: no se puede asignar un valor de tipo '{expr_type}' a una variable de tipo '{var_type}'.")
-    usage_table[var_name] = usage_table.get(var_name, 0) + 1  # Marca como usada
+    usage_table[var_name] = usage_table.get(var_name, 0) + 1
 
-def handle_call(node, symbol_table, usage_table):
+def handle_call(node, usage_table):
     func_name = node[1]
     arguments = node[2] if len(node) > 2 else []
     for arg in arguments:
-        if isinstance(arg, str) and arg in symbol_table:
-            usage_table[arg] = usage_table.get(arg, 0) + 1
-            continue
-        elif isinstance(arg, str) and arg not in symbol_table:
-            raise Exception(f"Error semántico: la variable '{arg}' no ha sido declarada.")
+        if isinstance(arg, str):
+            if resolve_variable(arg):
+                usage_table[arg] = usage_table.get(arg, 0) + 1
+            else:
+                raise Exception(f"Error semántico: la variable '{arg}' no ha sido declarada.")
 
-def eval_expression_type(expr, symbol_table):
-    # Si es un número entero
+def eval_expression_type(expr):
     if isinstance(expr, int):
         return 'int'
-    # Si es un número flotante
     if isinstance(expr, float):
         return 'float'
-    # Si es un string (cadena)
     if isinstance(expr, str):
-        # Si es una variable, busca su tipo
-        if expr in symbol_table:
-            return symbol_table[expr]
-        # Si es un literal string
         if expr.startswith('"') and expr.endswith('"'):
             return 'string'
         if expr.startswith("'") and expr.endswith("'"):
             return 'char'
-        # Si no, asume identificador no declarado
-        return 'unknown'
-    # Si es una operación (tupla: ('+', izq, der), etc.)
+        val = resolve_variable(expr)
+        return val['type'] if isinstance(val, dict) else val if val else 'unknown'
     if isinstance(expr, tuple):
-        if expr[0] == 'CAST':
-            cast_type = expr[1]
-            inner_type = eval_expression_type(expr[2], symbol_table)
-            # Solo permitimos cast de string a int o float, puedes expandir según tu lenguaje
-            if cast_type == 'int' and inner_type == 'string':
-                return 'int'
-            if cast_type == 'float' and inner_type == 'string':
-                return 'float'
-            raise Exception(f"Error semántico: conversión inválida de '{inner_type}' a '{cast_type}'.")
-        
         op = expr[0]
-        
-        # Operadores de comparación retornan bool
+        if op == 'CAST':
+            cast_type = expr[1]
+            inner_type = eval_expression_type(expr[2])
+            if cast_type in ['int', 'float'] and inner_type == 'string':
+                return cast_type
+            raise Exception(f"Error semántico: conversión inválida de '{inner_type}' a '{cast_type}'.")
         if op in ('>', '<', '>=', '<=', '==', '!='):
-            left_type = eval_expression_type(expr[1], symbol_table)
-            right_type = eval_expression_type(expr[2], symbol_table)
-            
-            # Verificar que los tipos sean comparables
-            if not types_comparable(left_type, right_type):
-                raise Exception(f"Error semántico: no se pueden comparar tipos '{left_type}' y '{right_type}'.")
-            
+            lt = eval_expression_type(expr[1])
+            rt = eval_expression_type(expr[2])
+            if not types_comparable(lt, rt):
+                raise Exception(f"Error semántico: no se pueden comparar tipos '{lt}' y '{rt}'.")
             return 'bool'
-        
-        # Operadores lógicos
         if op in ('&&', '||', 'AND', 'OR'):
-            left_type = eval_expression_type(expr[1], symbol_table)
-            right_type = eval_expression_type(expr[2], symbol_table)
-            
-            if not is_boolean_expression(expr[1], left_type):
-                raise Exception(f"Error semántico: operando izquierdo debe ser booleano en operación '{op}'.")
-            if not is_boolean_expression(expr[2], right_type):
-                raise Exception(f"Error semántico: operando derecho debe ser booleano en operación '{op}'.")
-            
+            lt = eval_expression_type(expr[1])
+            rt = eval_expression_type(expr[2])
+            if not is_boolean_expression(expr[1], lt) or not is_boolean_expression(expr[2], rt):
+                raise Exception("Error semántico: operandos no booleanos en operación lógica.")
             return 'bool'
-        
-        # Operador de negación
         if op in ('!', 'NOT'):
-            operand_type = eval_expression_type(expr[1], symbol_table)
+            operand_type = eval_expression_type(expr[1])
             if not is_boolean_expression(expr[1], operand_type):
                 raise Exception(f"Error semántico: el operador '!' solo puede aplicarse a valores booleanos, se encontró '{operand_type}'.")
             return 'bool'
-        
-        # Operadores aritméticos (código original)
         if op in ('+', '-', '*', '/'):
-            left_type = eval_expression_type(expr[1], symbol_table)
-            right_type = eval_expression_type(expr[2], symbol_table)
-            # Si hay una suma entre string y número, es inválido
-            if (left_type == 'string' and right_type in ('int', 'float')) or (right_type == 'string' and left_type in ('int', 'float')):
+            lt = eval_expression_type(expr[1])
+            rt = eval_expression_type(expr[2])
+            if (lt == 'string' and rt in ('int', 'float')) or (rt == 'string' and lt in ('int', 'float')):
                 raise Exception("Error semántico: no se puede operar entre 'string' y tipo numérico sin conversión explícita.")
-            if left_type == 'string' or right_type == 'string':
+            if lt == 'string' or rt == 'string':
                 return 'string'
-            if left_type == 'float' or right_type == 'float':
+            if lt == 'float' or rt == 'float':
                 return 'float'
-            if left_type == 'int' and right_type == 'int':
+            if lt == 'int' and rt == 'int':
                 return 'int'
             return 'unknown'
     return 'unknown'
 
 def types_compatible(var_type, expr_type):
-    # Puedes ajustar las reglas según tu lenguaje
-    if var_type == expr_type:
+    return var_type == expr_type or (var_type == 'float' and expr_type == 'int')
+
+def types_comparable(type1, type2):
+    numeric = {'int', 'float'}
+    if type1 in numeric and type2 in numeric:
         return True
-    if var_type == 'float' and expr_type == 'int':
-        return True  # Permite asignar int a float
-    
+    if type1 == type2:
+        return True
+    if type1 in {'string', 'char'} and type2 in {'string', 'char'}:
+        return True
     return False
 
-######################## AGREGANDO PARTE DE CONDICIONES Y FLUJO DE CONTROL #################################
+def is_boolean_expression(expr, expr_type):
+    if expr_type == 'bool':
+        return True
+    if isinstance(expr, tuple) and expr[0] in ('>', '<', '>=', '<=', '==', '!=', '&&', '||', 'AND', 'OR', '!', 'NOT'):
+        return True
+    return expr_type in ('int', 'float')
 
-def handle_if_statement(node, symbol_table, usage_table):
-    """
-    Maneja la validación semántica de una declaración IF
-    Estructura esperada: ("IF", condition, then_block, [else_block])
-    """
-    if len(node) < 3:
-        raise Exception("Error semántico: declaración IF malformada.")
-    
+def handle_if_statement(node, usage_table):
     condition = node[1]
     then_block = node[2]
     else_block = node[3] if len(node) > 3 else None
-    
-    # Validar que la condición sea una expresión booleana válida
-    condition_type = eval_expression_type(condition, symbol_table)
+
+    condition_type = eval_expression_type(condition)
     if not is_boolean_expression(condition, condition_type):
         raise Exception(f"Error semántico: la condición del IF debe ser una expresión booleana, se encontró '{condition_type}'.")
-    
-    # Validar el bloque then reutilizando semantic_analyze
-    if isinstance(then_block, list):
-        semantic_analyze(then_block, symbol_table=symbol_table, usage_table=usage_table)
 
-    # Validar el bloque else si existe
-    if else_block and isinstance(else_block, list):
-        semantic_analyze(else_block, symbol_table=symbol_table, usage_table=usage_table)
+    enter_scope("if")
+    semantic_analyze(then_block, usage_table)
+    exit_scope()
 
-def handle_while_statement(node, symbol_table, usage_table):
-    """
-    Maneja la validación semántica de una declaración WHILE
-    Estructura esperada: ("WHILE", condition, body_block)
-    """
-    if len(node) < 3:
-        raise Exception("Error semántico: declaración WHILE malformada.")
-    
+    if else_block:
+        enter_scope("else")
+        semantic_analyze(else_block, usage_table)
+        exit_scope()
+
+def handle_while_statement(node, usage_table):
     condition = node[1]
     body_block = node[2]
-    
-    # Validar que la condición sea una expresión booleana válida
-    condition_type = eval_expression_type(condition, symbol_table)
+
+    condition_type = eval_expression_type(condition)
     if not is_boolean_expression(condition, condition_type):
         raise Exception(f"Error semántico: la condición del WHILE debe ser una expresión booleana, se encontró '{condition_type}'.")
-    
-    # Validar el bloque del cuerpo
-    if isinstance(body_block, list):
-        semantic_analyze(body_block, symbol_table=symbol_table, usage_table=usage_table)
 
-def handle_for_statement(node, symbol_table, usage_table):
-    """
-    Maneja la validación semántica de una declaración FOR
-    Estructura esperada: ("FOR", init, condition, increment, body_block)
-    """
-    if len(node) < 5:
-        raise Exception("Error semántico: declaración FOR malformada.")
-    
+    enter_scope("while")
+    semantic_analyze(body_block, usage_table)
+    exit_scope()
+
+def handle_for_statement(node, usage_table):
     init = node[1]
     condition = node[2]
     increment = node[3]
     body_block = node[4]
-    
-    # Validar inicialización (puede ser declaración o asignación)
+
+    enter_scope("for")
     if init:
         if init[0] == "DECLARATION":
-            handle_declaration(init, symbol_table)
+            handle_declaration(init, usage_table)
         elif init[0] == "ASSIGNMENT":
-            handle_assignment(init, symbol_table)
-    
-    # Validar que la condición sea una expresión booleana válida
+            handle_assignment(init, usage_table)
+
     if condition:
-        condition_type = eval_expression_type(condition, symbol_table)
-        if not is_boolean_expression(condition, condition_type):
-            raise Exception(f"Error semántico: la condición del FOR debe ser una expresión booleana, se encontró '{condition_type}'.")
-    
-    # Validar incremento (normalmente una asignación)
+        cond_type = eval_expression_type(condition)
+        if not is_boolean_expression(condition, cond_type):
+            raise Exception(f"Error semántico: la condición del FOR debe ser una expresión booleana, se encontró '{cond_type}'.")
+
     if increment and increment[0] == "ASSIGNMENT":
-        handle_assignment(increment, symbol_table)
-    
-    # Validar el bloque del cuerpo
-    if isinstance(body_block, list):
-        semantic_analyze(body_block, symbol_table=symbol_table, usage_table=usage_table)
+        handle_assignment(increment, usage_table)
 
-def is_boolean_expression(expr, expr_type):
-    """
-    Determina si una expresión es válida como condición booleana
-    """
-    # Tipos directamente booleanos
-    if expr_type == 'bool':
-        return True
-    
-    # Si es una operación de comparación, es booleana
-    if isinstance(expr, tuple):
-        op = expr[0]
-        # Operadores de comparación
-        if op in ('>', '<', '>=', '<=', '==', '!='):
-            return True
-        # Operadores lógicos
-        if op in ('&&', '||', 'AND', 'OR'):
-            return True
-        # Operador de negación
-        if op in ('!', 'NOT'):
-            return True
-    
-    # Números pueden ser usados como booleanos (0 = false, != 0 = true)
-    # Esto depende del lenguaje que estés implementando
-    if expr_type in ('int', 'float'):
-        return True  # Cambia a False si tu lenguaje no permite esto
-    
-    # Strings no son válidos como condiciones booleanas por defecto
-    if expr_type in ('string', 'char'):
-        return False
-    
-    return False
-
-def types_comparable(type1, type2):
-    """
-    Determina si dos tipos pueden ser comparados
-    """
-    # Tipos numéricos son comparables entre sí
-    numeric_types = {'int', 'float'}
-    if type1 in numeric_types and type2 in numeric_types:
-        return True
-    
-    # Mismo tipo siempre es comparable
-    if type1 == type2:
-        return True
-    
-    # Char y string pueden ser comparables
-    string_types = {'string', 'char'}
-    if type1 in string_types and type2 in string_types:
-        return True
-    
-    return False
+    semantic_analyze(body_block, usage_table)
+    exit_scope()
