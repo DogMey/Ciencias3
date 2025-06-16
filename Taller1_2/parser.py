@@ -50,6 +50,9 @@ def parse_statement(tokens):
     elif match_keyword(tokens, 'while'):
         return parse_while(tokens)
     
+    elif match_keyword(tokens, 'function'):
+        return parse_func(tokens)
+
     # Si el primer token es 'const', procesamos declaración de constante
     elif match_keyword(tokens, 'const'):
         tokens.pop(0)  # Consumir 'const'
@@ -141,6 +144,61 @@ def parse_assignment(tokens):
     
     # Retornar la estructura de la asignación
     return ('ASSIGNMENT', ident, expr)
+
+# Función para procesar una estructura de función 'function'
+def parse_func(tokens):
+
+    # Verificamos si el primer token es la palabra clave 'function'
+    expect_keyword(tokens, 'function')
+
+    # Guardamos la información de la línea y columna del 'function' para mostrarla en caso de error
+    func_line, func_col = tokens[0][2], tokens[0][3]
+    #Recuperamos el nombre de la función
+    if not match(tokens, 'IDENTIFIER'):
+        tipo, val, line, col = tokens[0]
+        raise SyntaxError(f"Error en línea {line}, columna {col}: se esperaba nombre de función después de 'function', pero se encontró '{val}'")
+    func_name = parse_id(tokens)
+    # Espera el paréntesis de apertura '('
+    expect(tokens, 'LPAREN')
+    params = []  # Lista para almacenar los parámetros de la función
+    # Procesa los parámetros de la función
+    while not match(tokens, 'RPAREN'):
+        # Procesa el tipo del parámetro (ej. 'int', 'float')
+        param_type = parse_type(tokens)
+        # Procesa el identificador del parámetro
+        if not match(tokens, 'IDENTIFIER'):
+            tipo, val, line, col = tokens[0]
+            raise SyntaxError(f"Error en línea {line}, columna {col}: se esperaba nombre de parámetro después de '{param_type}', pero se encontró '{val}'")
+        param_name = parse_id(tokens)
+        params.append((param_type, param_name))
+        # Si hay una coma, seguimos con el siguiente parámetro
+        if match(tokens, 'COMMA'):
+            tokens.pop(0)
+            continue
+        # Si no hay una coma, esperamos el paréntesis de cierre ')'
+        elif match(tokens, 'RPAREN'):
+            tokens.pop(0)
+            break
+        else:
+            tipo, val, line, col = tokens[0]
+            raise SyntaxError(f"Error en línea {line}, columna {col}: se esperaba ',' o ')' pero se encontró '{val}'")
+    # Espera la llave de apertura '{'
+    expect(tokens, 'LBRACE')
+    body = []  # Lista para almacenar el cuerpo de la función
+    # Procesa las sentencias dentro del cuerpo de la función
+    while tokens and not match(tokens, 'RBRACE'):
+        stmt = parse_statement(tokens)
+        if isinstance(stmt, list):
+            body.extend(stmt)
+        else:
+            body.append(stmt)
+    # Si no hemos encontrado la llave de cierre 'RBRACE' y ya no quedan tokens, lanzar error
+    if not match(tokens, 'RBRACE'):
+        raise SyntaxError(f"Error en línea {func_line}, columna {func_col}: falta '}}' de cierre en el bloque de la función '{func_name}'")
+    # Consumir la llave de cierre 'RBRACE'
+    tokens.pop(0)
+    # Retorna la estructura de la función con su nombre, parámetros y cuerpo
+    return ('FUNCTION', func_name, params, body)
 
 # Función para procesar una estructura condicional 'if'
 def parse_if(tokens):
