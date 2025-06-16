@@ -98,6 +98,17 @@ def run_semantic_tests():
             "espera_error": True,
             "error_esperado": "Error semántico: la variable 'x' no ha sido declarada."
         },
+        {
+            "codigo": "function sumar(int a, int b){print(a + b);}",
+            "descripcion": "Creación de Función Correcta",
+            "espera_error": False,
+        },
+         {
+            "codigo": "function sumar(int a, int b){print(a + b);",
+            "descripcion": "Creación de Función Correcta",
+            "espera_error": True,
+            "error_esperado": "Error en línea 1, columna 10: falta '}' de cierre en el bloque de la función 'sumar'"
+        },
     ]
 
     for i, ejemplo in enumerate(ejemplos, 1):
