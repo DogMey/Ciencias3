@@ -98,6 +98,27 @@ def run_semantic_tests():
             "espera_error": True,
             "error_esperado": "Error semántico: la variable 'x' no ha sido declarada."
         },
+        {
+            "codigo": "func int sumar(int a, int b) { return a + b; }",
+            "descripcion": "Declaración válida de función sumar con dos parámetros enteros",
+            "espera_error": False
+        },
+        {
+            "codigo": "func int sumar(int a, int b) { return a + b; } sumar(2, 3);",
+            "descripcion": "Llamada válida a función sumar con dos argumentos",
+            "espera_error": False
+        },
+        {
+            "codigo": "func int sumar(int a, int b) { return a + b; } sumar(2);",
+            "descripcion": "Llamada inválida a función sumar con aridad incorrecta",
+            "espera_error": True,
+            "error_esperado": "Aridad incorrecta en 'sumar'"
+        },
+        {
+            "codigo": "int a; func int sumar(int a, int b) { return a + b; } a = sumar(2, 3);",
+            "descripcion": "Llamada inválida a función sumar con demasiados argumentos",
+            "espera_error": False,
+        }
     ]
 
     for i, ejemplo in enumerate(ejemplos, 1):
@@ -108,6 +129,8 @@ def run_semantic_tests():
         try:
             tokens = lexer(ejemplo['codigo'])
             ast = parser(tokens)
+            print("AST generado:")
+            print(ast)
             semantic_analyze(ast)
             if ejemplo["espera_error"]:
                 print("❌ Se esperaba un error semántico, pero no ocurrió.")

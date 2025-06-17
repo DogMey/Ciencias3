@@ -1,7 +1,7 @@
 import re  # Importamos la librería de expresiones regulares para facilitar la búsqueda de patrones en el código fuente
 
 # Palabras clave
-keywords = {'if', 'else', 'while', 'return', 'for', 'int', 'float', 'bool', 'true', 'false', 'const', 'string', 'function', 'void', 'break', 'continue', 'switch', 'case', 'default'}
+keywords = {'if', 'else', 'while', 'return', 'for', 'int', 'float', 'bool', 'true', 'false', 'const', 'string', 'function', 'void', 'break', 'continue', 'switch', 'case', 'default', 'func'}
 
 # Definición de tokens con expresiones regulares
 token_definitions = [

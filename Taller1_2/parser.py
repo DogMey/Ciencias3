@@ -49,6 +49,12 @@ def parse_statement(tokens):
     # Si el primer token es 'while', procesamos un bucle while
     elif match_keyword(tokens, 'while'):
         return parse_while(tokens)
+
+    elif match_keyword(tokens, 'func'):
+        return parse_function_declaration(tokens)
+
+    elif match_keyword(tokens, 'return'):
+        return parse_return(tokens)
     
     elif match_keyword(tokens, 'function'):
         return parse_func(tokens)
@@ -137,10 +143,7 @@ def parse_assignment(tokens):
     parse_equals(tokens)
     
     # Procesar la expresión del lado derecho de la asignación (ej. '5')
-    expr = parse_expression(tokens)
-    
-    # Procesar el punto y coma al final
-    parse_semi(tokens)
+    expr = parse_statement(tokens)
     
     # Retornar la estructura de la asignación
     return ('ASSIGNMENT', ident, expr)
@@ -348,7 +351,35 @@ def parse_primary(tokens):
         tipo, val, line, col = tokens[0]
         raise SyntaxError(f"Error en línea {line}, columna {col}: token inesperado '{val}' en expresión")
 
+def parse_function_declaration(tokens):
+    expect_keyword(tokens, 'func')
+    return_type = parse_type(tokens)  # Tipo de retorno (KEYWORD)
+    func_name = parse_id(tokens)      # Nombre de la función (IDENTIFIER)
+    expect(tokens, 'LPAREN')
+    params = []
+    while not match(tokens, 'RPAREN'):
+        param_type = parse_type(tokens)   # Tipo del parámetro (KEYWORD)
+        param_name = parse_id(tokens)     # Nombre del parámetro (IDENTIFIER)
+        params.append((param_type, param_name))
+        if match(tokens, 'COMMA'):
+            tokens.pop(0)
+    expect(tokens, 'RPAREN')
+    expect(tokens, 'LBRACE')
+    body = []
+    while tokens and not match(tokens, 'RBRACE'):
+        body.append(parse_statement(tokens))
+    expect(tokens, 'RBRACE')
+    return ('FUNC_DECL', func_name, params, return_type, body)
 
+def parse_return(tokens):
+    expect_keyword(tokens, 'return')
+    # Permite return con o sin expresión (ej. return;)
+    if match(tokens, 'SEMICOLON'):
+        tokens.pop(0)
+        return ('RETURN', None)
+    expr = parse_expression(tokens)
+    parse_semi(tokens)
+    return ('RETURN', expr)
 # === FUNCIONES AUXILIARES ===
 
 # Variable global para almacenar la última línea procesada en el analizador.

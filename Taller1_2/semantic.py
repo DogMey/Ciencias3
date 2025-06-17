@@ -1,12 +1,18 @@
+scope_stack = [] # Pila de ámbitos para manejar el alcance de las variables
+
 def semantic_analyze(ast, symbol_table=None, usage_table=None):
     if symbol_table is None or not isinstance(symbol_table, dict):
         symbol_table = {}  # Solo crear nuevo si no se pasa uno
+        scope_stack.clear()  # Limpiar la pila de ámbitos
+        scope_stack.append('global')  # Agregar el ámbito global por defecto
+        symbol_table = {'global': {}}
     if usage_table is None:
         usage_table = {}
+    if "functions" not in symbol_table:
+        symbol_table["functions"] = {'print': {'params': [['int', 'float', 'string', 'char', 'bool']], 'return': 'void'}}  # Función print por defecto
 
     for node in ast:
         node_type = node[0]
-
         if node_type == "DECLARATION":
             handle_declaration(node, symbol_table, usage_table)
         elif node_type == "ASSIGNMENT":
@@ -21,6 +27,10 @@ def semantic_analyze(ast, symbol_table=None, usage_table=None):
             handle_for_statement(node, symbol_table, usage_table)
         elif node_type == "CONST_DECLARATION":
             handle_const_declaration(node, symbol_table, usage_table)
+        elif node_type == "FUNC_DECL":
+            handle_function_declaration(node, symbol_table, usage_table)
+        elif node_type == "RETURN":
+            handle_return(node, symbol_table)
 
     # Al final, revisa variables no usadas
     for var, count in usage_table.items():
@@ -32,56 +42,120 @@ def semantic_analyze(ast, symbol_table=None, usage_table=None):
 def handle_declaration(node, symbol_table, usage_table):
     var_type = node[1]
     var_name = node[2]
-    if var_name in symbol_table:
-        raise Exception(f"Error semántico: la variable '{var_name}' ya fue declarada.")
-    # Si hay inicialización, verifica el tipo
-    if len(node) > 3:
-        expr = node[3]
-        expr_type = eval_expression_type(expr, symbol_table)
-        if not types_compatible(var_type, expr_type):
-            raise Exception(f"Error semántico: no se puede asignar un valor de tipo '{expr_type}' a una variable de tipo '{var_type}'.")
-    symbol_table[var_name] = var_type
-    usage_table[var_name] = 0  # Inicialmente no usada
+    # Solo verifica en el scope actual, no en todos
+    scope = current_scope()
+    if var_name in symbol_table[scope]:
+        raise Exception(f"Error semántico: la variable '{var_name}' ya fue declarada en este ámbito.")
+    declare_variable(var_name, var_type, symbol_table)
+    usage_table[var_name] = 0
 
 def handle_const_declaration(node, symbol_table, usage_table):
-    """
-    Maneja la declaración de constantes.
-    Estructura esperada: ('CONST_DECLARATION', nombre, valor)
-    """
     const_name = node[1]
     expr = node[2]
-    if const_name in symbol_table:
-        raise Exception(f"Error semántico: no se puede modificar la constante '{const_name}'.")
+    scope = current_scope()
+    if const_name in symbol_table[scope]:
+        raise Exception(f"Error semántico: la constante '{const_name}' ya fue declarada en este ámbito.")
     expr_type = eval_expression_type(expr, symbol_table)
-    # Guardamos la constante con su tipo y un flag especial
-    symbol_table[const_name] = {'type': expr_type, 'const': True}
-    usage_table[const_name] = 0  # Inicialmente no usada
+    symbol_table[scope][const_name] = {'type': expr_type, 'const': True}
+    usage_table[const_name] = 0
 
 def handle_assignment(node, symbol_table, usage_table):
     var_name = node[1]
-    if var_name in symbol_table:
-        entry = symbol_table[var_name]
-        # Si es constante, no se puede modificar
-        if isinstance(entry, dict) and entry.get('const', False):
-            raise Exception(f"Error semántico: no se puede modificar la constante '{var_name}'.")
-        var_type = entry['type'] if isinstance(entry, dict) else entry
-    else:
+    entry = lookup_variable(var_name, symbol_table)
+    if entry is None:
         raise Exception(f"Error semántico: la variable '{var_name}' no ha sido declarada.")
+    # Si es constante, no se puede modificar
+    if isinstance(entry, dict) and entry.get('const', False):
+        raise Exception(f"Error semántico: no se puede modificar la constante '{var_name}'.")
+    var_type = entry['type'] if isinstance(entry, dict) else entry
     expr = node[2]
     expr_type = eval_expression_type(expr, symbol_table)
     if not types_compatible(var_type, expr_type):
         raise Exception(f"Error semántico: no se puede asignar un valor de tipo '{expr_type}' a una variable de tipo '{var_type}'.")
-    usage_table[var_name] = usage_table.get(var_name, 0) + 1  # Marca como usada
+    usage_table[var_name] = usage_table.get(var_name, 0) + 1
+
 
 def handle_call(node, symbol_table, usage_table):
     func_name = node[1]
     arguments = node[2] if len(node) > 2 else []
+    arg_types = [eval_expression_type(arg, symbol_table) for arg in arguments]
     for arg in arguments:
-        if isinstance(arg, str) and arg in symbol_table:
-            usage_table[arg] = usage_table.get(arg, 0) + 1
-            continue
-        elif isinstance(arg, str) and arg not in symbol_table:
-            raise Exception(f"Error semántico: la variable '{arg}' no ha sido declarada.")
+        if isinstance(arg, str):
+            entry = lookup_variable(arg, symbol_table)
+            if entry is not None:
+                usage_table[arg] = usage_table.get(arg, 0) + 1
+            else:
+                raise Exception(f"Error semántico: la variable '{arg}' no ha sido declarada.")
+    check_function_call(func_name, arg_types, symbol_table)
+
+def declare_function(name, param_types, return_type, symbol_table):
+    if name in symbol_table["functions"]:
+        raise Exception(f"Función '{name}' ya declarada")
+    symbol_table["functions"][name] = {
+        "params": param_types,
+        "return": return_type
+    }
+
+def check_function_call(name, arg_types, symbol_table):
+    funcs = symbol_table["functions"]
+    if name not in funcs:
+        raise Exception(f"Función '{name}' no declarada")
+    sig = funcs[name]
+    if len(arg_types) != len(sig["params"]):
+        raise Exception(f"Aridad incorrecta en '{name}'")
+    for i, (a, p) in enumerate(zip(arg_types, sig["params"])):
+        # Si el argumento es un dict (constante), extrae el tipo real
+        if isinstance(a, dict) and 'type' in a:
+            a_type = a['type']
+        else:
+            a_type = a
+        if isinstance(p, list):
+            if a_type not in p:
+                raise Exception(
+                    f"Tipo erróneo en arg {i+1} de '{name}': {a_type} no es uno de {p}"
+                )
+        else:
+            if a_type != p:
+                raise Exception(
+                    f"Tipo erróneo en arg {i+1} de '{name}': {a_type} ≠ {p}"
+                )
+    return sig["return"]
+
+def handle_function_declaration(node, symbol_table, usage_table):
+    # node = ('FUNCTION_DECL', name, param_list, return_type, body)
+    name = node[1]
+    param_list = node[2]  # [('int', 'a'), ('float', 'b')]
+    return_type = node[3]
+    param_types = [ptype for ptype, _ in param_list]
+    declare_function(name, param_types, return_type, symbol_table)
+
+    enter_scope(name, symbol_table)  # Crea un nuevo scope para la función
+    # Declara los parámetros en el nuevo scope
+    for ptype, pname in param_list:
+        declare_variable(pname, ptype, symbol_table)
+    # Analiza el cuerpo de la función
+    body = node[4]
+    semantic_analyze(body, symbol_table, usage_table)
+    exit_scope()
+
+def handle_return(node, symbol_table):
+    # node = ('RETURN', expr)
+    expr = node[1]
+    # Busca el scope de función más cercano en scope_stack
+    func_scope = None
+    for scope in reversed(scope_stack):
+        if scope in symbol_table["functions"]:
+            func_scope = scope
+            break
+    if func_scope is None:
+        raise Exception("Error semántico: 'return' fuera de una función.")
+    expected_type = symbol_table["functions"][func_scope]["return"]
+    if expr is None:
+        return_type = 'void'
+    else:
+        return_type = eval_expression_type(expr, symbol_table)
+    if not types_compatible(expected_type, return_type):
+        raise Exception(f"Error semántico: el tipo de retorno '{return_type}' no es compatible con el tipo esperado '{expected_type}' en la función '{func_scope}'.")
 
 def eval_expression_type(expr, symbol_table):
     # Si es un número entero
@@ -93,8 +167,11 @@ def eval_expression_type(expr, symbol_table):
     # Si es un string (cadena)
     if isinstance(expr, str):
         # Si es una variable, busca su tipo
-        if expr in symbol_table:
-            return symbol_table[expr]
+        entry = lookup_variable(expr, symbol_table)
+        if entry is not None:
+            if isinstance(entry, dict) and 'type' in entry:
+                return entry['type']
+            return entry
         # Si es un literal string
         if expr.startswith('"') and expr.endswith('"'):
             return 'string'
@@ -192,11 +269,15 @@ def handle_if_statement(node, symbol_table, usage_table):
     
     # Validar el bloque then reutilizando semantic_analyze
     if isinstance(then_block, list):
+        enter_scope("if", symbol_table)
         semantic_analyze(then_block, symbol_table=symbol_table, usage_table=usage_table)
+        exit_scope()
 
     # Validar el bloque else si existe
     if else_block and isinstance(else_block, list):
+        enter_scope("else", symbol_table)
         semantic_analyze(else_block, symbol_table=symbol_table, usage_table=usage_table)
+        exit_scope()
 
 def handle_while_statement(node, symbol_table, usage_table):
     """
@@ -303,3 +384,33 @@ def types_comparable(type1, type2):
         return True
     
     return False
+
+# Manejo de alcance de variables
+
+def enter_scope(name, symbol_table):
+    scope_stack.append(name)
+    symbol_table[name] = {}
+
+def exit_scope():
+    scope_stack.pop()
+
+def current_scope():
+    return scope_stack[-1]
+
+def declare_variable(name, vtype, symbol_table):
+    scope = current_scope()
+    table = symbol_table[scope]
+    if name in table:
+        print(f"Peligro: '{name}' oculta un nombre en el ámbito '{scope}'")
+    table[name] = vtype
+
+def lookup_variable(name, symbol_table):
+    # Busca desde el scope más interno hacia el global
+    for scope in reversed(scope_stack):
+        table = symbol_table[scope]
+        if name in table:
+            return table[name]
+    # Si no se encuentra, busca en el global (fuera de la pila)
+    if name in symbol_table:
+        return symbol_table[name]
+    return None
