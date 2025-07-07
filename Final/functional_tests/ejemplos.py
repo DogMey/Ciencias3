@@ -144,4 +144,143 @@ if (z == 3)
             )
         ]
     },
+    {
+        "codigo": """int n = 5;
+while (n > 0) {
+    n = n - 1;
+}
+""",
+        "descripcion": "Bucle while simple",
+        "salida_esperada_tokens": [
+            ('KEYWORD', 'int'),
+            ('IDENTIFIER', 'n'),
+            ('OPERATOR', '='),
+            ('NUMBER', '5'),
+            ('SEMICOLON', ';'),
+            ('KEYWORD', 'while'),
+            ('LPAREN', '('),
+            ('IDENTIFIER', 'n'),
+            ('GREATER', '>'),
+            ('NUMBER', '0'),
+            ('RPAREN', ')'),
+            ('LBRACE', '{'),
+            ('IDENTIFIER', 'n'),
+            ('OPERATOR', '='),
+            ('IDENTIFIER', 'n'),
+            ('OPERATOR', '-'),
+            ('NUMBER', '1'),
+            ('SEMICOLON', ';'),
+            ('RBRACE', '}')
+        ],
+        "salida_esperada_ast": [
+            ('DECLARATION', 'int', 'n', 5),
+            ('WHILE', ('>', 'n', 0), [
+                ('ASSIGNMENT', 'n', ('-', 'n', 1))
+            ])
+        ]
+    },
+    {
+        "codigo": """int a = 1;
+int b = 2;
+int c = 3;
+        """,
+        "descripcion": "Declaraciones múltiples",
+        "salida_esperada_tokens": [
+            ('KEYWORD', 'int'),
+            ('IDENTIFIER', 'a'),
+            ('OPERATOR', '='),
+            ('NUMBER', '1'),
+            ('SEMICOLON', ';'),
+            ('KEYWORD', 'int'),
+            ('IDENTIFIER', 'b'),
+            ('OPERATOR', '='),
+            ('NUMBER', '2'),
+            ('SEMICOLON', ';'),
+            ('KEYWORD', 'int'),
+            ('IDENTIFIER', 'c'),
+            ('OPERATOR', '='),
+            ('NUMBER', '3'),
+            ('SEMICOLON', ';')
+        ],
+        "salida_esperada_ast": [
+            ('DECLARATION', 'int', 'a', 1),
+            ('DECLARATION', 'int', 'b', 2),
+            ('DECLARATION', 'int', 'c', 3)
+        ]
+    },
+    {
+        "codigo": """func int suma(int a, int b) {
+    return a + b;
+}
+int resultado = suma(2, 3);
+""",
+        "descripcion": "Declaración e invocación de función simple",
+        "salida_esperada_tokens": [
+            ('KEYWORD', 'func'),
+            ('KEYWORD', 'int'),
+            ('IDENTIFIER', 'suma'),
+            ('LPAREN', '('),
+            ('KEYWORD', 'int'),
+            ('IDENTIFIER', 'a'),
+            ('COMMA', ','),
+            ('KEYWORD', 'int'),
+            ('IDENTIFIER', 'b'),
+            ('RPAREN', ')'),
+            ('LBRACE', '{'),
+            ('KEYWORD', 'return'),
+            ('IDENTIFIER', 'a'),
+            ('OPERATOR', '+'),
+            ('IDENTIFIER', 'b'),
+            ('SEMICOLON', ';'),
+            ('RBRACE', '}'),
+            ('KEYWORD', 'int'),
+            ('IDENTIFIER', 'resultado'),
+            ('OPERATOR', '='),
+            ('IDENTIFIER', 'suma'),
+            ('LPAREN', '('),
+            ('NUMBER', '2'),
+            ('COMMA', ','),
+            ('NUMBER', '3'),
+            ('RPAREN', ')'),
+            ('SEMICOLON', ';')
+        ],
+        "salida_esperada_ast": [
+            ('FUNC_DECL', 'suma', [('int', 'a'), ('int', 'b')], 'int', [
+                ('RETURN', ('+', 'a', 'b'))
+            ]),
+            ('DECLARATION', 'int', 'resultado', ('FUNC_CALL', 'suma', [2, 3]))
+        ]
+    },
+    {
+        "codigo": """func void hola() {
+    print(1);
+}
+hola();
+        """,
+        "descripcion": "Función sin parámetros y sin retorno, y llamada a la función",
+        "salida_esperada_tokens": [
+            ('KEYWORD', 'func'),
+            ('KEYWORD', 'void'),
+            ('IDENTIFIER', 'hola'),
+            ('LPAREN', '('),
+            ('RPAREN', ')'),
+            ('LBRACE', '{'),
+            ('IDENTIFIER', 'print'),
+            ('LPAREN', '('),
+            ('NUMBER', '1'),
+            ('RPAREN', ')'),
+            ('SEMICOLON', ';'),
+            ('RBRACE', '}'),
+            ('IDENTIFIER', 'hola'),
+            ('LPAREN', '('),
+            ('RPAREN', ')'),
+            ('SEMICOLON', ';')
+        ],
+        "salida_esperada_ast": [
+            ('FUNC_DECL', 'hola', [], 'void', [
+                ('FUNC_CALL', 'print', [1])
+            ]),
+            ('FUNC_CALL', 'hola', [])
+        ]
+    }
 ]

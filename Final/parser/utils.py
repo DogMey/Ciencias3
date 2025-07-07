@@ -40,7 +40,7 @@ def parse_type(tokens):
     if not tokens:
         raise SyntaxError("Error: se esperaba tipo, pero no se encontró más tokens.")
     tipo, val, line, col = tokens.pop(0)
-    if tipo == 'KEYWORD' and val in ('int', 'float', 'string', 'char', 'bool'):
+    if tipo == 'KEYWORD' and val in ('int', 'float', 'string', 'char', 'bool', 'void'):
         return val
     raise SyntaxError(f"Error en línea {line}, columna {col}: se esperaba un tipo válido, pero se encontró '{val}'")
 
