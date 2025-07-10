@@ -1,2 +1,4 @@
 # Ciencias3
 Trabajos de compiladores
+
+Video explicación: https://udistritaleduco-my.sharepoint.com/:v:/g/personal/rdfuquenec_udistrital_edu_co/ERCQo429U81Eiqh7jRvmcTQBCqsFDVelQ6R4_pJGKMCGHg?nav=eyJyZWZlcnJhbEluZm8iOnsicmVmZXJyYWxBcHAiOiJPbmVEcml2ZUZvckJ1c2luZXNzIiwicmVmZXJyYWxBcHBQbGF0Zm9ybSI6IldlYiIsInJlZmVycmFsTW9kZSI6InZpZXciLCJyZWZlcnJhbFZpZXciOiJNeUZpbGVzTGlua0NvcHkifX0&e=SfKi7h
