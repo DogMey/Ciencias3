@@ -11,7 +11,10 @@ def parse_while(tokens):
     while tokens and not match(tokens, 'RBRACE'):
         block.append(parse_statement(tokens))
     if not match(tokens, 'RBRACE'):
-        tipo, val, line, col = tokens[-1]
-        raise SyntaxError(f"Error en línea {line}, columna {col}: falta '}}' de cierre en el bloque 'while'")
+        if tokens:
+            tipo, val, line, col = tokens[-1]
+            raise SyntaxError(f"Error en línea {line}, columna {col}: falta '}}' de cierre en el bloque 'while'")
+        else:
+            raise SyntaxError("Error: falta '}' de cierre en el bloque 'while', llegó al final del archivo")
     tokens.pop(0)  # Consumir '}'
     return ('WHILE', condition, block)

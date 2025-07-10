@@ -55,10 +55,13 @@ def parse_num(tokens):
 def parse_condition(tokens):
     from .expressions import parse_expression
     left = parse_expression(tokens)
-    if not tokens:
-        raise SyntaxError("Error: se esperaba operador de comparación en condición, pero no se encontró más tokens.")
+    
+    # Si no hay más tokens o el siguiente token no es un operador de comparación,
+    # entonces es una condición simple (ej. variable booleana)
+    if not tokens or tokens[0][0] not in ('EQUALS', 'NOTEQUAL', 'GREATER', 'LESS', 'LESSEQUAL', 'GREATEREQUAL'):
+        return left
+    
+    # Si hay un operador de comparación, procesarlo
     op = tokens.pop(0)
-    if op[0] not in ('EQUALS', 'NOTEQUAL', 'GREATER', 'LESS', 'LESSEQUAL', 'GREATEREQUAL'):
-        raise SyntaxError(f"Error en línea {op[2]}, columna {op[3]}: se esperaba operador de comparación, pero se encontró '{op[1]}'")
     right = parse_expression(tokens)
     return (op[1], left, right)

@@ -8,6 +8,7 @@ from semantic.assignment import check_assignment
 from semantic.type_inference import infer_type
 from semantic.ifblock import check_ifblock
 from semantic.whileblock import check_whileblock
+from semantic.functions import check_function
 
 def semantic_analyze(ast):
     scopes = ScopeStack()
@@ -17,10 +18,12 @@ def semantic_analyze(ast):
             check_declaration(node, scopes)
         elif node_type == 'ASSIGNMENT':
             check_assignment(node, scopes, infer_type)
-        elif node_type == 'IF':
+        elif node_type in ('IF', 'IF_ELSE'):
             check_ifblock(node, scopes, analyze_node)
         elif node_type == 'WHILE':
             check_whileblock(node, scopes, analyze_node)
+        elif node_type == 'FUNC_DECL':
+            check_function(node, scopes, analyze_node)
 
     for node in ast:
         analyze_node(node, scopes)

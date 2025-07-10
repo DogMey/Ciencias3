@@ -26,22 +26,53 @@ def cargar_ejemplos(tipo, categoria):
     spec.loader.exec_module(mod)
     return getattr(mod, nombre_lista)
 
-def run_functional_lexer_tests(ejemplos):
+def run_functional_lexer_tests(ejemplos, tipo):
+    exitos = 0
+    total = len(ejemplos)
+    
     for i, ejemplo in enumerate(ejemplos, 1):
         print(f"\n=== Test {i}: {ejemplo['descripcion']} ===")
         print("Código fuente:")
         print(ejemplo['codigo'])
+        
         try:
             tokens_completos = lexer(ejemplo['codigo'])
             tokens = [(t[0], t[1]) for t in tokens_completos]
-            print("Tokens obtenidos:", tokens)
-            print("Tokens esperados:", ejemplo.get('salida_esperada_tokens'))
-            if tokens == ejemplo.get('salida_esperada_tokens'):
-                print("✔️ Test exitoso")
-            else:
-                print("❌ Tokens incorrectos")
+            
+            if tipo == 'exitosos':
+                print("Tokens obtenidos:", tokens)
+                print("Tokens esperados:", ejemplo.get('salida_esperada_tokens'))
+                if tokens == ejemplo.get('salida_esperada_tokens'):
+                    print("Test exitoso")
+                    exitos += 1
+                else:
+                    print("❌ Tokens incorrectos")
+            else:  # tipo == 'error'
+                # Para casos de error, esperamos que el análisis léxico falle
+                salida_esperada = ejemplo.get('salida_esperada_lexica', False)
+                if salida_esperada == False:
+                    print("❌ Se esperaba un error léxico, pero el análisis fue exitoso")
+                    print("Tokens obtenidos:", tokens)
+                else:
+                    print("Test exitoso - análisis léxico completado correctamente")
+                    exitos += 1
+                    
         except Exception as e:
-            print(f"❌ Error en análisis léxico: {e}")
+            if tipo == 'exitosos':
+                print(f"ERROR inesperado en análisis léxico: {e}")
+            else:  # tipo == 'error'
+                salida_esperada = ejemplo.get('salida_esperada_lexica', False)
+                if salida_esperada == False:
+                    print(f"ERROR detectado correctamente: {e}")
+                    print(f"Tipo de error esperado: {ejemplo.get('error_esperado', 'Error léxico')}")
+                    exitos += 1
+                else:
+                    print(f"ERROR inesperado en análisis léxico: {e}")
+    
+    print(f"\n{'='*50}")
+    print(f"Resultados: {exitos}/{total} pruebas exitosas")
+    print(f"Porcentaje de éxito: {(exitos/total)*100:.1f}%")
+    return exitos == total
 
 if __name__ == "__main__":
     import argparse
@@ -50,4 +81,6 @@ if __name__ == "__main__":
     parser.add_argument('--categoria', choices=['variables', 'funciones', 'bloques'], default='variables', help='Categoría de ejemplos')
     args = parser.parse_args()
     ejemplos = cargar_ejemplos(args.tipo, args.categoria)
-    run_functional_lexer_tests(ejemplos)
+    print(f"Cargando ejemplos: {args.tipo} - {args.categoria}")
+    print(f"Se cargaron {len(ejemplos)} ejemplos")
+    run_functional_lexer_tests(ejemplos, args.tipo)

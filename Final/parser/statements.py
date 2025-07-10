@@ -9,7 +9,7 @@ def parse_statement(tokens):
     """
     from .utils import match_keyword, match
     # Declaración de variable
-    if match_keyword(tokens, 'int') or match_keyword(tokens, 'float'):
+    if match_keyword(tokens, 'int') or match_keyword(tokens, 'float') or match_keyword(tokens, 'bool'):
         from .declaration import parse_declaration
         return parse_declaration(tokens)
     # Sentencia if

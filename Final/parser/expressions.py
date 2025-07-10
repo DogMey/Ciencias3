@@ -19,12 +19,34 @@ def parse_term(tokens):
     return node
 
 def parse_factor(tokens):
-    # Números, identificadores, paréntesis
+    # Números, identificadores, paréntesis, llamadas a función, literales booleanos
     if match(tokens, 'NUMBER'):
         value = tokens.pop(0)[1]
         return float(value) if '.' in value else int(value)
-    elif match(tokens, 'IDENTIFIER'):
+    elif match(tokens, 'KEYWORD') and tokens[0][1] in ('true', 'false'):
+        # Literal booleano
         return tokens.pop(0)[1]
+    elif match(tokens, 'IDENTIFIER'):
+        # Verificar si es una llamada a función
+        if len(tokens) > 1 and tokens[1][0] == 'LPAREN':
+            # Es una llamada a función
+            func_name = tokens.pop(0)[1]  # Consumir el nombre
+            expect(tokens, 'LPAREN')
+            args = []
+            # Soporta cero o más argumentos separados por coma
+            if not match(tokens, 'RPAREN'):
+                while True:
+                    arg = parse_expression(tokens)
+                    args.append(arg)
+                    if match(tokens, 'COMMA'):
+                        tokens.pop(0)
+                    else:
+                        break
+            expect(tokens, 'RPAREN')
+            return ('FUNC_CALL', func_name, args)
+        else:
+            # Es un identificador simple
+            return tokens.pop(0)[1]
     elif match(tokens, 'LPAREN'):
         expect(tokens, 'LPAREN')
         expr = parse_expression(tokens)

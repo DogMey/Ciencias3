@@ -41,8 +41,11 @@ def parse_function_declaration(tokens):
     while tokens and not match(tokens, 'RBRACE'):
         body.append(parse_statement(tokens))
     if not match(tokens, 'RBRACE'):
-        tipo, val, line, col = tokens[-1]
-        raise SyntaxError(f"Error en línea {line}, columna {col}: falta '}}' de cierre en el cuerpo de la función")
+        if tokens:
+            tipo, val, line, col = tokens[-1]
+            raise SyntaxError(f"Error en línea {line}, columna {col}: falta '}}' de cierre en el cuerpo de la función")
+        else:
+            raise SyntaxError("Error: falta '}' de cierre en el cuerpo de la función, llegó al final del archivo")
     tokens.pop(0)  # Consumir '}'
     return ('FUNC_DECL', func_name, params, return_type, body)
 
